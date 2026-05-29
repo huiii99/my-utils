@@ -6,6 +6,6 @@ A collection of lightweight, single-file web tools for daily development workflo
 
 | Tool | Description |
 |------|-------------|
-| 🔧 [CLI Variable Filler](cli-tools/) | Paste a CLI command with `{variables}`, fill in values interactively, and copy the resolved command |
+| 🔧 [CLI Variable Filler](replace-cli-var/) | Paste a CLI command with `{variables}`, fill in values interactively, and copy the resolved command |
 | 🧪 [CI Failures → azdev test](extract-ci-failures/) | Paste CI failure logs and get batched `azdev test` commands |
-| 📅 [Work Tracker & Report Builder](report-generator/) | Log daily tasks and generate a formatted weekly report for email |
+| 📅 [Work Tracker & Report Builder](report-builder/) | Log daily tasks and generate a formatted weekly report for email |
