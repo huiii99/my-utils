@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Tracker & Report Builder</title>
+    <style>
+        :root {
+            --ms-blue: #0078d4;
+            --ms-dark: #004578;
+            --bg-gray: #f3f4f6;
+            --border: #e5e7eb;
+            --danger: #d13438;
+            --holiday-bg: #fff8f8;
+            --holiday-border: #fca5a5;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', -apple-system, sans-serif; }
+        body { background: var(--bg-gray); padding: 20px; color: #1a1a1a; font-size: 14px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        
+        /* Config */
+        .config-section { background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #616161; margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+        .required-dot::after { content: " *"; color: var(--danger); }
+        
+        /* Layout Buttons */
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--ms-blue); color: white; }
+        .btn-primary:hover { background: var(--ms-dark); }
+        .btn-secondary { background: #f0f0f0; color: #333; border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-success { background: #107c10; color: white; padding: 10px 20px; font-size: 14px; }
+        .btn-success:hover { background: #0b590b; }
+        .btn-danger { background: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; }
+        .btn-warning { background: #fff4ce; color: #a4373a; border: 1px solid #fde789; }
+
+        /* Day Cards */
+        .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: 0.3s; }
+        .day-card.is-holiday { background: var(--holiday-bg); border-color: var(--holiday-border); }
+        .day-card.is-holiday .task-table, .day-card.is-holiday .btn-primary { display: none; }
+        .day-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .day-title { font-weight: 600; font-size: 14px; color: var(--ms-blue); }
+        .day-actions { display: flex; gap: 8px; align-items: center; }
+        
+        /* Tables */
+        .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .task-table th { background: #fafafa; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: #616161; font-weight: 600; }
+        .task-table td { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+        .task-table input { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+        
+        /* Status Tags */
+        .status-select { padding: 4px; border-radius: 4px; font-weight: 600; font-size: 12px; width: 100%; }
+        .status-done { background: #dff6dd; color: #107c10; }
+        .status-progress { background: #deecf9; color: #0078d4; }
+        .status-blocked { background: #fed9cc; color: #d13438; }
+
+        /* Modal Overlay for Review */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #f9fafb; width: 95%; height: 90%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal-header { background: white; padding: 15px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { flex: 1; display: flex; overflow: hidden; padding: 15px; gap: 15px; }
+        .preview-pane { flex: 2; background: white; border: 1px solid var(--border); border-radius: 6px; overflow-y: auto; padding: 15px; }
+        .code-pane { flex: 1; background: #1e1e1e; border-radius: 6px; display: flex; flex-direction: column; padding: 10px; }
+        .code-textarea { flex: 1; width: 100%; background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', monospace; font-size: 12px; border: none; resize: none; outline: none; padding: 10px; line-height: 1.5; }
+        .copied { background: #107c10 !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="config-section">
+        <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">👤 User Configuration (Required)</div>
+        <div class="config-grid">
+            <div class="form-group"><label class="required-dot">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
+            <div class="form-group"><label class="required-dot">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
+            <div class="form-group"><label class="required-dot">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
+            <div class="form-group"><label class="required-dot">Week Range</label><select id="cfg-week" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-size:13px;"></select></div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <h2>📅 Daily Work Tracker</h2>
+        <div>
+            <button class="btn btn-danger" onclick="clearAllData()">Clear All Records</button>
+            <button class="btn btn-success" onclick="openReviewModal()">⚡ Generate Weekly Report</button>
+        </div>
+    </div>
+
+    <div id="days-container"></div>
+
+    <div class="day-card" style="padding:16px; background:#fdfdfd; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #8764b8;">🚀 Next Week Plans</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addPlanItem()">＋ Add Plan</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 70%;">Plan Description</th><th style="width: 20%;">Priority</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="plans-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="reviewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:600; color:var(--ms-dark);">🔍 Review & Export Report</h3>
+            <div>
+                <button class="btn btn-primary" id="copySubjectBtn" style="margin-right:8px;" onclick="copySubject()">📌 Copy Subject</button>
+                <button class="btn btn-success" id="copyBodyBtn" style="margin-right:8px;" onclick="copyFormattedBody()">📋 Copy Formatted Body</button>
+                <button class="btn btn-secondary" onclick="closeReviewModal()">Close</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="preview-pane" id="htmlPreview"></div>
+            <div class="code-pane" style="display: none;">
+                <textarea id="codeOutput" readonly></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    let state = { 
+        tasks: { 'Monday': [], 'Tuesday': [], 'Wednesday': [], 'Thursday': [], 'Friday': [] }, 
+        plans: [],
+        holidays: { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false }
+    };
+
+    function generateId() { return '_' + Math.random().toString(36).substr(2, 9); }
+
+    window.onload = function() {
+        if(localStorage.getItem('dd_state_save_v3')) {
+            state = JSON.parse(localStorage.getItem('dd_state_save_v3'));
+        } else {
+            state.tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress' });
+        }
+        if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
+        
+        // Populate week range select
+        function populateWeekSelect() {
+            const select = document.getElementById('cfg-week');
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const year = now.getFullYear();
+            // Find first Monday of the year
+            let d = new Date(year, 0, 1);
+            while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+            
+            let options = [];
+            while (d.getFullYear() === year) {
+                let fri = new Date(d);
+                fri.setDate(fri.getDate() + 4);
+                // Only include weeks where Friday hasn't passed yet
+                if (fri >= today) {
+                    let monDay = d.getDate();
+                    let monMonth = months[d.getMonth()];
+                    let friDay = fri.getDate();
+                    let friMonth = months[fri.getMonth()];
+                    let label;
+                    if (d.getMonth() === fri.getMonth()) {
+                        label = `Week of ${monDay} ${monMonth} - ${friDay} ${monMonth} · ${year}`;
+                    } else {
+                        label = `Week of ${monDay} ${monMonth} - ${friDay} ${friMonth} · ${year}`;
+                    }
+                    options.push(label);
+                }
+                d.setDate(d.getDate() + 7);
+            }
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt;
+                el.textContent = opt;
+                select.appendChild(el);
+            });
+
+            // Auto-select current week
+            const saved = localStorage.getItem('cfg-week');
+            if (saved && options.includes(saved)) {
+                select.value = saved;
+            } else {
+                select.selectedIndex = 0;
+                localStorage.setItem('cfg-week', select.value);
+            }
+        }
+        populateWeekSelect();
+
+        ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'].forEach(id => {
+            if(localStorage.getItem(id)) document.getElementById(id).value = localStorage.getItem(id);
+            const evtType = id === 'cfg-week' ? 'change' : 'input';
+            document.getElementById(id).addEventListener(evtType, () => {
+                localStorage.setItem(id, document.getElementById(id).value);
+                if(id === 'cfg-week') renderTracker();
+            });
+        });
+        renderTracker();
+    };
+
+    function saveState() { localStorage.setItem('dd_state_save_v3', JSON.stringify(state)); }
+    function escapeHtml(s) { return s ? s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : ''; }
+
+    function autoCalculateDateTag(dayName) {
+        const weekInputValue = document.getElementById('cfg-week').value;
+        const match = weekInputValue.match(/(\d+)\s+([A-Za-z]+)/);
+        if (!match) return '';
+        const startDay = parseInt(match[1], 10);
+        const monthStr = match[2];
+        const dayOffset = DAYS.indexOf(dayName);
+        if (dayOffset === -1) return '';
+        return `${startDay + dayOffset} ${monthStr}`;
+    }
+
+    function toggleHoliday(day) {
+        state.holidays[day] = !state.holidays[day];
+        saveState();
+        renderTracker();
+    }
+
+    function renderTracker() {
+        const container = document.getElementById('days-container');
+        container.innerHTML = '';
+
+        DAYS.forEach((day, index) => {
+            const calculatedDate = autoCalculateDateTag(day);
+            const isHoliday = state.holidays[day];
+            
+            let card = document.createElement('div');
+            card.className = `day-card ${isHoliday ? 'is-holiday' : ''}`;
+            
+            let copyBtnHtml = (index > 0 && !isHoliday) ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="copyUnfinishedSmart('${day}')">📋 Copy From Yesterday</button>` : '';
+            let holidayBtnText = isHoliday ? '🔓 Set as Working Day' : '🏖️ Set as Holiday / Off';
+            let holidayBtnClass = isHoliday ? 'btn-primary' : 'btn-warning';
+            let dateDisplay = calculatedDate ? `📅 ${calculatedDate}` : '(Set Week Range to auto-date)';
+
+            let html = `
+                <div class="day-header">
+                    <span class="day-title">
+                        ${isHoliday ? '🏖️' : '☀️'} ${day} 
+                        <small style="color:#666; font-weight:normal; margin-left:8px;">${dateDisplay}</small>
+                        ${isHoliday ? '<strong style="color:var(--danger); margin-left:12px;">[HOLIDAY / DAY OFF]</strong>' : ''}
+                    </span>
+                    <div class="day-actions">
+                        <button class="btn ${holidayBtnClass}" style="padding:4px 10px; font-size:12px;" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>
+                        ${copyBtnHtml}
+                        <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addTask('${day}')">＋ Add Task</button>
+                    </div>
+                </div>
+                <table class="task-table">
+                    <thead><tr><th style="width: 25%;">Title / Ticket</th><th style="width: 50%;">Description</th><th style="width: 15%;">Status</th><th style="width: 10%;">Action</th></tr></thead>
+                    <tbody>
+            `;
+
+            if(!isHoliday) {
+                if(!state.tasks[day] || state.tasks[day].length === 0) {
+                    html += `<tr><td colspan="4" style="color:#9ca3af; text-align:center; padding:12px;">No tasks logged. Click "+ Add Task" to start.</td></tr>`;
+                } else {
+                    state.tasks[day].forEach((t, i) => {
+                        html += `<tr>
+                            <td><input type="text" value="${escapeHtml(t.title)}" onchange="updateTask('${day}',${i},'title',this.value)" placeholder="e.g. #33263"></td>
+                            <td><input type="text" value="${escapeHtml(t.desc)}" onchange="updateTask('${day}',${i},'desc',this.value)" placeholder="Task details..."></td>
+                            <td>
+                                <select class="status-select status-${t.status}" onchange="updateTask('${day}',${i},'status',this.value)">
+                                    <option value="done" ${t.status==='done'?'selected':''}>✓ Done</option>
+                                    <option value="progress" ${t.status==='progress'?'selected':''}>↻ Progress</option>
+                                    <option value="blocked" ${t.status==='blocked'?'selected':''}>! Blocker</option>
+                                </select>
+                            </td>
+                            <td><button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deleteTask('${day}',${i})">Del</button></td>
+                        </tr>`;
+                    });
+                }
+            } else {
+                html += `<tr><td colspan="4" style="color:#9ca3af; text-align:center; padding:24px; font-style:italic;">Out of Office.</td></tr>`;
+            }
+            card.innerHTML = html + `</tbody></table>`;
+            container.appendChild(card);
+        });
+
+        const tbody = document.getElementById('plans-tbody');
+        tbody.innerHTML = state.plans.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No next week plans recorded.</td></tr>` : '';
+        state.plans.forEach((p, i) => {
+            tbody.innerHTML += `<tr>
+                <td><input type="text" value="${escapeHtml(p.text)}" onchange="updatePlan(${i},'text',this.value)" placeholder="Next week task..."></td>
+                <td>
+                    <select onchange="updatePlan(${i},'priority',this.value)" style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border);">
+                        <option value="High" ${p.priority==='High'?'selected':''}>🔴 High</option>
+                        <option value="Medium" ${p.priority==='Medium'?'selected':''}>🟡 Medium</option>
+                    </select>
+                </td>
+                <td><button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deletePlan(${i})">Del</button></td>
+            </tr>`;
+        });
+    }
+
+    function copyUnfinishedSmart(currentDay) {
+        const currentIdx = DAYS.indexOf(currentDay);
+        if(currentIdx <= 0) return;
+        let targetDay = null;
+        for (let i = currentIdx - 1; i >= 0; i--) {
+            if (!state.holidays[DAYS[i]]) { targetDay = DAYS[i]; break; }
+        }
+        if(!targetDay) return;
+        const unfinished = state.tasks[targetDay].filter(t => t.status === 'progress' || t.status === 'blocked');
+        if(!state.tasks[currentDay]) state.tasks[currentDay] = [];
+        unfinished.forEach(t => {
+            if(!state.tasks[currentDay].some(existTask => existTask.id === t.id)) {
+                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status });
+            }
+        });
+        saveState(); renderTracker();
+    }
+
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress'}); saveState(); renderTracker(); }
+    function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
+    function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High'}); saveState(); updatePlan(); renderTracker(); }
+    function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
+    function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
+    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
+
+    function validateConfiguration() {
+        const name = document.getElementById('cfg-name').value.trim();
+        const email = document.getElementById('cfg-email').value.trim();
+        const dept = document.getElementById('cfg-dept').value.trim();
+        const week = document.getElementById('cfg-week').value.trim();
+        if(!name || !email || !dept || !week) {
+            alert("❌ Please fill in all required fields in the 'User Configuration' panel first.");
+            return false;
+        }
+        return { name, email, dept, week };
+    }
+
+    function copySubject() {
+        const name = document.getElementById('cfg-name').value.trim();
+        const week = document.getElementById('cfg-week').value.trim();
+        if (!name || !week) {
+            alert("❌ Please fill in Name and Week Range in the configuration first.");
+            return;
+        }
+        const subject = `${week} - ${name}'s Weekly Report`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(subject).then(() => {
+                flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
+            }).catch(() => {
+                fallbackCopyText(subject);
+            });
+        } else {
+            fallbackCopyText(subject);
+        }
+    }
+
+    function fallbackCopyText(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
+        } catch(e) {
+            flashCopied('copySubjectBtn', '📌 Copy Subject', '⚠ Copy failed');
+        }
+        document.body.removeChild(ta);
+    }
+
+    /* 💡 核心底层修复：全内联高解析度 HTML 生成器 (Outlook 完美适配版) */
+    function buildFinalReportContent() {
+        const config = validateConfiguration();
+        if(!config) return null; 
+
+        let taskMap = new Map();
+        DAYS.forEach(d => {
+            if(state.holidays[d]) return;
+            const dateTag = autoCalculateDateTag(d);
+            if(state.tasks[d]) {
+                state.tasks[d].forEach(t => {
+                    if (!t.title.trim() && !t.desc.trim()) return;
+                    // Use composite key of id + desc to keep entries with different descriptions separate
+                    const mapKey = t.id + '||' + t.desc.trim();
+                    if (!taskMap.has(mapKey)) {
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, dates: [dateTag || d] });
+                    } else {
+                        let existing = taskMap.get(mapKey);
+                        existing.status = t.status; existing.title = t.title;
+                        let dv = dateTag || d;
+                        if (!existing.dates.includes(dv)) existing.dates.push(dv);
+                    }
+                });
+            }
+        });
+
+        let doneTasks = [], progTasks = [], blockTasks = [];
+        taskMap.forEach(t => {
+            let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr };
+            if (t.status === 'done') doneTasks.push(compiled);
+            else if (t.status === 'blocked') blockTasks.push(compiled);
+            else if (t.status === 'progress') progTasks.push(compiled);
+        });
+
+        // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
+        // Helper: build a section header row with icon + title
+        function buildSectionHeader(iconBg, iconColor, icon, title) {
+            return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr>` +
+                `<td width="44" valign="middle" style="padding:14px 0 14px 20px;">` +
+                `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="${iconBg}" style="background-color:${iconBg}; width:24px; height:24px; color:${iconColor}; font-weight:bold; font-size:14px; line-height:24px; text-align:center; border-radius:4px;">${icon}</td></tr></table>` +
+                `</td>` +
+                `<td valign="middle" style="padding:14px 20px 14px 10px; font-size:15px; font-weight:600; color:#1a1a1a; font-family:'Segoe UI',-apple-system,sans-serif;">${title}</td>` +
+                `</tr></table>`;
+        }
+
+        // Helper: build a task item row with icon + content + badge
+        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText) {
+            return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom:1px solid #f3f4f6; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr>` +
+                `<td width="44" valign="top" style="padding:12px 0 12px 20px;">` +
+                `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="${iconBg}" style="background-color:${iconBg}; width:20px; height:20px; color:${iconColor}; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${icon}</td></tr></table>` +
+                `</td>` +
+                `<td valign="top" style="padding:12px 12px; text-align:left;">` +
+                `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}</div>` +
+                `<div style="font-size:13px; color:#616161; margin-top:2px;">${escapeHtml(t.desc)}</div>` +
+                `<div style="font-size:11px; color:#9ca3af; margin-top:4px;">📅 ${escapeHtml(t.dateTag)}</div>` +
+                `</td>` +
+                `<td width="100" valign="top" style="padding:12px 20px 12px 0; text-align:right; white-space:nowrap;">` +
+                `<table border="0" cellspacing="0" cellpadding="0" align="right"><tr><td bgcolor="${badgeBg}" style="background-color:${badgeBg}; padding:2px 8px; color:${badgeColor}; font-size:11px; font-weight:600; border-radius:4px; white-space:nowrap;">${badgeText}</td></tr></table>` +
+                `</td>` +
+                `</tr></table>`;
+        }
+
+        // Spacer helper
+        let spacer = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="height:16px; font-size:1px; line-height:1px;">&nbsp;</td></tr></table>`;
+        let spacerLg = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="height:24px; font-size:1px; line-height:1px;">&nbsp;</td></tr></table>`;
+
+        // Outer container table with bgcolor on <td>
+        let out = `<div id="actual-report-root">` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:800px; margin:0 auto; font-family:'Segoe UI',-apple-system,sans-serif; color:#1a1a1a; line-height:1.65;">` +
+            `<tr><td bgcolor="#f9fafb" style="background-color:#f9fafb; padding:20px;">`;
+
+        // Header
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:12px;">` +
+            `<tr><td bgcolor="#0078d4" style="background-color:#0078d4; padding:28px 32px; border-radius:12px;">` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">` +
+            `<tr>` +
+            `<td align="left" valign="middle" style="padding:0; vertical-align:middle;">` +
+            `<h1 style="font-size:22px; font-weight:600; margin:0; color:#ffffff; font-family:'Segoe UI',sans-serif; line-height:1.2;">Weekly Report</h1>` +
+            `<div style="font-size:16px; margin-top:4px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">${escapeHtml(config.name)}</div>` +
+            `</td>` +
+            `<td align="right" valign="middle" style="padding:0; vertical-align:middle; text-align:right;">` +
+            `<table border="0" cellspacing="0" cellpadding="0" style="display:inline-block; border-collapse:collapse; border-radius:20px;">` +
+            `<tr><td align="center" valign="middle" bgcolor="#339be0" style="background-color:#339be0; padding:6px 14px; color:#ffffff; font-size:13px; font-weight:500; font-family:'Segoe UI',sans-serif; white-space:nowrap; line-height:1; border-radius:20px;">${escapeHtml(config.week)}</td></tr>` +
+            `</table>` +
+            `</td></tr></table>` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding-top:16px; font-size:13px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">` +
+            `<span style="margin-right:24px;">📧 ${escapeHtml(config.email)}</span>` +
+            `<span>🎯 ${escapeHtml(config.dept)}</span>` +
+            `</td></tr></table>` +
+            `</td></tr></table>`;
+
+        out += spacerLg;
+
+        // 1. Key Accomplishments
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+            buildSectionHeader('#dff6dd', '#107c10', '✓', 'Key Accomplishments') +
+            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+        if (!doneTasks.length) {
+            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding:16px 20px; color:#616161; font-size:13px;">No tasks completed this week.</td></tr></table>`;
+        } else {
+            doneTasks.forEach(t => {
+                out += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
+            });
+        }
+        out += `</td></tr></table>`;
+
+        out += spacer;
+
+        // 2. In Progress
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+            buildSectionHeader('#deecf9', '#0078d4', '↻', 'In Progress') +
+            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+        if (!progTasks.length) {
+            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding:16px 20px; color:#616161; font-size:13px;">No active tasks in progress.</td></tr></table>`;
+        } else {
+            progTasks.forEach(t => {
+                out += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
+            });
+        }
+        out += `</td></tr></table>`;
+
+        out += spacer;
+
+        // 3. Blockers
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+            buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
+            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:16px 20px;">`;
+        if (!blockTasks.length) {
+            out += `<div style="font-size:13px; color:#107c10; font-weight:500;">✓ No active blockers reported.</div>`;
+        } else {
+            blockTasks.forEach(t => {
+                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                    `<td width="16" valign="middle" style="padding:0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="middle" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span></td>` +
+                    `</tr></table>`;
+            });
+        }
+        out += `</td></tr></table>`;
+
+        out += spacer;
+
+        // 4. Next Week Plans
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+            buildSectionHeader('#f0ebf8', '#8764b8', '→', 'Next Week Plans') +
+            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
+        if (!state.plans.length) {
+            out += `<div style="color:#616161; font-size:13px;">No plans listed for next week.</div>`;
+        } else {
+            state.plans.forEach((p, idx) => {
+                if (!p.text.trim()) return;
+                let bg = p.priority === 'High' ? '#fed9cc' : '#fff4ce';
+                let fg = p.priority === 'High' ? '#d13438' : '#ff8c00';
+                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                    `<td width="32" valign="middle" style="padding:6px 0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="#f0ebf8" style="background-color:#f0ebf8; width:20px; height:20px; color:#8764b8; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${idx+1}</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="middle" style="padding:6px 12px; font-size:13px; color:#1a1a1a; text-align:left;">${escapeHtml(p.text)}</td>` +
+                    `<td width="60" valign="middle" style="padding:6px 0; text-align:right;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0" align="right"><tr><td bgcolor="${bg}" style="background-color:${bg}; padding:2px 6px; color:${fg}; font-size:11px; font-weight:600; border-radius:4px;">${p.priority}</td></tr></table>` +
+                    `</td>` +
+                    `</tr></table>`;
+            });
+        }
+        out += `</td></tr></table>`;
+
+        // Footer
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:15px; font-size:11px; color:#9ca3af; font-family:'Segoe UI',sans-serif;">DDAzure Weekly Report | ${escapeHtml(config.week)}</td></tr></table>`;
+
+        // Close container
+        out += `</td></tr></table></div>`;
+        return out;
+    }
+
+    var lastGeneratedHtml = '';
+    function openReviewModal() {
+        const finalHtml = buildFinalReportContent();
+        if(!finalHtml) return; 
+        lastGeneratedHtml = finalHtml;
+        document.getElementById('htmlPreview').innerHTML = finalHtml;
+        document.getElementById('codeOutput').value = finalHtml;
+        document.getElementById('reviewModal').style.display = 'flex';
+    }
+    
+    function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
+    
+    /* 💡 完全摒弃 Alert！采用闪烁气泡提示逻辑，完美适配 file:// 协议与高阶 Clipboard API */
+    function copyFormattedBody() {
+        // Use the raw HTML string to preserve bgcolor attributes (DOM may strip them)
+        const htmlStr = lastGeneratedHtml;
+        if (!htmlStr) return;
+
+        if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+            const blob = new Blob([htmlStr], { type: 'text/html' });
+            const el = document.getElementById('actual-report-root');
+            const blobPlain = new Blob([el ? el.innerText : ''], { type: 'text/plain' });
+            
+            navigator.clipboard.write([
+                new ClipboardItem({ 'text/html': blob, 'text/plain': blobPlain })
+            ]).then(() => {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '✓ Copied! Paste into Outlook');
+            }).catch(() => {
+                selectAndCopyFallback(document.getElementById('actual-report-root'));
+            });
+        } else {
+            selectAndCopyFallback(document.getElementById('actual-report-root'));
+        }
+    }
+
+    function selectAndCopyFallback(el) {
+        const range = document.createRange();
+        range.selectNode(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        
+        try {
+            const successful = document.execCommand('copy');
+            if(successful) {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '✓ Copied! Paste into Outlook');
+            } else {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '⚠ Select manually & Ctrl+C');
+            }
+        } catch(e) {
+            flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '⚠ Select manually & Ctrl+C');
+        }
+        sel.removeAllRanges(); // 清理高亮选择状态
+    }
+
+    function flashCopied(btnId, originalText, copiedText) {
+        const btn = document.getElementById(btnId);
+        btn.textContent = copiedText;
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('copied');
+        }, 2500);
+    }
+</script>
+</body>
+</html>
