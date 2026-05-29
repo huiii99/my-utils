@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CI Failures → azdev test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117; color: #c9d1d9; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; padding: 2rem;
+    }
+    h1 { margin-bottom: 0.5rem; color: #58a6ff; }
+    .subtitle { color: #8b949e; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .container { width: 100%; max-width: 900px; }
+    label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+    textarea {
+      width: 100%; height: 240px; background: #161b22; color: #c9d1d9;
+      border: 1px solid #30363d; border-radius: 6px; padding: 0.75rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; font-size: 0.85rem;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: #58a6ff; }
+    .actions { margin: 1rem 0; display: flex; gap: 0.5rem; }
+    button {
+      padding: 0.5rem 1.2rem; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; transition: background 0.15s;
+    }
+    #convertBtn { background: #238636; color: #fff; }
+    #convertBtn:hover { background: #2ea043; }
+    #copyBtn { background: #30363d; color: #c9d1d9; }
+    #copyBtn:hover { background: #484f58; }
+    #clearBtn { background: #30363d; color: #c9d1d9; }
+    #clearBtn:hover { background: #484f58; }
+    .output-section { margin-top: 1rem; }
+    #output { display: flex; flex-direction: column; gap: 0.5rem; }
+    .output-row {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .output-row input {
+      flex: 1; background: #161b22; color: #7ee787;
+      border: 1px solid #30363d; border-radius: 6px; padding: 0.5rem 0.75rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; font-size: 0.85rem;
+    }
+    .output-row input:focus { outline: none; border-color: #58a6ff; }
+    .output-row button {
+      padding: 0.4rem 0.7rem; font-size: 0.8rem; background: #30363d; color: #c9d1d9;
+      white-space: nowrap;
+    }
+    .output-row button:hover { background: #484f58; }
+    .no-results { color: #8b949e; font-size: 0.85rem; }
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem; background: #238636; color: #fff;
+      padding: 0.6rem 1.2rem; border-radius: 6px; font-size: 0.85rem;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .limit-group { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+    .limit-group input {
+      width: 60px; background: #161b22; color: #c9d1d9;
+      border: 1px solid #30363d; border-radius: 6px; padding: 0.35rem 0.5rem;
+      font-size: 0.9rem; text-align: center;
+    }
+    .limit-group input:focus { outline: none; border-color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <h1>CI Failures → azdev test</h1>
+  <p class="subtitle">Paste CI failure logs, get azdev test commands.</p>
+
+  <div class="container">
+    <label for="input">Paste CI failure logs:</label>
+    <textarea id="input" placeholder="FAILED src/azure-cli/.../test_network_commands.py::NetworkLoadBalancerWithSku::test_network_lb_sku
+FAILED src/azure-cli/.../test_network_commands.py::NetworkLoadBalancerWithZone::test_network_lb_zone
+..."></textarea>
+
+    <div class="limit-group">
+      <label for="limit" style="margin-bottom:0">Tests per line:</label>
+      <input id="limit" type="number" value="6" min="1" max="50">
+    </div>
+
+    <div class="actions">
+      <button id="convertBtn">Convert</button>
+      <button id="copyBtn">Copy All</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+
+    <div class="output-section">
+      <label>Output:</label>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard!</div>
+
+  <script>
+    const inputEl = document.getElementById('input');
+    const outputEl = document.getElementById('output');
+    const limitEl = document.getElementById('limit');
+
+    function parse(raw) {
+      const lines = raw.split('\n');
+      const names = [];
+      for (const line of lines) {
+        // Match lines containing FAILED ...::test_function_name
+        const m = line.match(/FAILED\s+\S+::(\w+)$/);
+        if (m) names.push(m[1]);
+      }
+      return names;
+    }
+
+    function format(names, limit) {
+      const chunks = [];
+      for (let i = 0; i < names.length; i += limit) {
+        chunks.push('azdev test ' + names.slice(i, i + limit).join(' '));
+      }
+      return chunks;
+    }
+
+    function convert() {
+      const limit = Math.max(1, parseInt(limitEl.value) || 6);
+      const names = parse(inputEl.value);
+      outputEl.innerHTML = '';
+      if (names.length === 0) {
+        outputEl.innerHTML = '<span class="no-results">(no FAILED test lines detected)</span>';
+        return;
+      }
+      const lines = format(names, limit);
+      for (const line of lines) {
+        const row = document.createElement('div');
+        row.className = 'output-row';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = line;
+        inp.readOnly = true;
+        const btn = document.createElement('button');
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(inp.value).then(() => {
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 1200);
+          });
+        });
+        row.appendChild(inp);
+        row.appendChild(btn);
+        outputEl.appendChild(row);
+      }
+    }
+
+    document.getElementById('convertBtn').addEventListener('click', convert);
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const inputs = outputEl.querySelectorAll('.output-row input');
+      if (!inputs.length) return;
+      const text = Array.from(inputs).map(i => i.value).join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 1500);
+      });
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      inputEl.value = '';
+      outputEl.innerHTML = '';
+    });
+
+    // Auto-convert on paste
+    inputEl.addEventListener('paste', () => setTimeout(convert, 0));
+  </script>
+</body>
+</html>

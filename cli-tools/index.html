@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI Variable Filler</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; display: flex; justify-content: center; padding: 40px 20px; }
+    .container { max-width: 720px; width: 100%; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; color: #58a6ff; }
+    p.subtitle { color: #8b949e; margin-bottom: 24px; font-size: 0.9rem; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+    textarea { width: 100%; padding: 12px 14px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; color: #c9d1d9; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.95rem; resize: vertical; min-height: 80px; outline: none; transition: border-color 0.2s; }
+    textarea:focus { border-color: #58a6ff; }
+    .vars-section { margin-top: 28px; }
+    .vars-section h2 { font-size: 1.1rem; color: #c9d1d9; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .vars-section h2 span.count { background: #1f6feb; color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; }
+    .var-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .var-label { min-width: 140px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem; color: #ffa657; background: #1c2128; padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d; }
+    .var-arrow { color: #484f58; font-size: 1.2rem; }
+    .var-input { flex: 1; padding: 8px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+    .var-input:focus { border-color: #58a6ff; }
+    .var-input::placeholder { color: #484f58; }
+    .output-section { margin-top: 32px; }
+    .output-box { position: relative; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; min-height: 48px; color: #c9d1d9; }
+    .output-box .filled { color: #7ee787; }
+    .output-box .unfilled { color: #ffa657; }
+    .copy-btn { position: absolute; top: 8px; right: 8px; background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+    .copy-btn:hover { background: #30363d; color: #c9d1d9; }
+    .copy-btn.copied { background: #238636; border-color: #2ea043; color: #fff; }
+    .empty-state { color: #484f58; font-style: italic; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .toggle-label { font-size: 0.85rem; color: #8b949e; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; background: #30363d; border-radius: 11px; cursor: pointer; transition: background 0.2s; display: inline-block; }
+    .toggle-switch.active { background: #238636; }
+    .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #c9d1d9; border-radius: 50%; transition: transform 0.2s; }
+    .toggle-switch.active::after { transform: translateX(18px); }
+    .toggle-hint { font-size: 0.78rem; color: #484f58; margin-top: 4px; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 CLI Variable Filler</h1>
+    <p class="subtitle">Paste a CLI command with <code>{variables}</code> and fill in the values below.</p>
+
+    <label for="cmd-input">Command Template</label>
+    <textarea id="cmd-input" placeholder="e.g. network lb create -g {rg} -n {lb_name} --sku Standard"></textarea>
+    <div class="toggle-row">
+      <label class="toggle-label" onclick="toggleConcat()">
+        <span class="toggle-switch" id="concat-toggle"></span>
+        Multiline concatenation
+      </label>
+    </div>
+    <p class="toggle-hint" id="concat-hint" style="display:none">Strips surrounding <code>'</code> quotes from each line and joins into a single command.</p>
+
+    <div class="vars-section" id="vars-section" style="display:none">
+      <h2>Variables <span class="count" id="var-count"></span></h2>
+      <div id="vars-container"></div>
+    </div>
+
+    <div class="output-section" id="output-section" style="display:none">
+      <label>Resolved Command</label>
+      <div class="output-box" id="output-box">
+        <button class="copy-btn" id="copy-btn" onclick="copyOutput()">Copy</button>
+        <span id="output-text"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cmdInput = document.getElementById('cmd-input');
+    const varsSection = document.getElementById('vars-section');
+    const varsContainer = document.getElementById('vars-container');
+    const varCount = document.getElementById('var-count');
+    const outputSection = document.getElementById('output-section');
+    const outputText = document.getElementById('output-text');
+    const copyBtn = document.getElementById('copy-btn');
+
+    let currentVars = [];
+    let varValues = {};
+    let concatMode = false;
+
+    cmdInput.addEventListener('input', parseCommand);
+
+    function toggleConcat() {
+      concatMode = !concatMode;
+      const toggle = document.getElementById('concat-toggle');
+      const hint = document.getElementById('concat-hint');
+      toggle.classList.toggle('active', concatMode);
+      hint.style.display = concatMode ? 'block' : 'none';
+      parseCommand();
+    }
+
+    function preprocessCommand(raw) {
+      if (!concatMode) return raw;
+      return raw.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => line.replace(/^'/, '').replace(/'$/, ''))
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function parseCommand() {
+      const raw = cmdInput.value;
+      const cmd = preprocessCommand(raw);
+      const matches = [...cmd.matchAll(/\{([^}]+)\}/g)];
+      const uniqueVars = [...new Set(matches.map(m => m[1]))];
+
+      // Preserve existing values
+      const oldValues = { ...varValues };
+      varValues = {};
+      uniqueVars.forEach(v => { varValues[v] = oldValues[v] || ''; });
+      currentVars = uniqueVars;
+
+      renderVars();
+      renderOutput();
+    }
+
+    function renderVars() {
+      if (currentVars.length === 0) {
+        varsSection.style.display = 'none';
+        outputSection.style.display = 'none';
+        return;
+      }
+
+      varsSection.style.display = 'block';
+      outputSection.style.display = 'block';
+      varCount.textContent = currentVars.length;
+
+      varsContainer.innerHTML = currentVars.map((v, i) => `
+        <div class="var-row">
+          <div class="var-label">${i + 1}. ${v}</div>
+          <span class="var-arrow">→</span>
+          <input class="var-input" type="text" data-var="${v}" value="${varValues[v]}" placeholder="Enter value for ${v}" oninput="updateVar(this)">
+        </div>
+      `).join('');
+    }
+
+    function updateVar(el) {
+      varValues[el.dataset.var] = el.value;
+      renderOutput();
+    }
+
+    function renderOutput() {
+      const raw = cmdInput.value;
+      const cmd = preprocessCommand(raw);
+      if (!cmd || currentVars.length === 0) return;
+
+      let html = escapeHtml(cmd);
+      currentVars.forEach(v => {
+        const escaped = escapeHtml(`{${v}}`);
+        if (varValues[v]) {
+          html = html.replaceAll(escaped, `<span class="filled">${escapeHtml(varValues[v])}</span>`);
+        } else {
+          html = html.replaceAll(escaped, `<span class="unfilled">{${escapeHtml(v)}}</span>`);
+        }
+      });
+
+      outputText.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function copyOutput() {
+      let text = preprocessCommand(cmdInput.value);
+      currentVars.forEach(v => {
+        if (varValues[v]) text = text.replaceAll(`{${v}}`, varValues[v]);
+      });
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ Copied';
+        copyBtn.classList.add('copied');
+        setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>
