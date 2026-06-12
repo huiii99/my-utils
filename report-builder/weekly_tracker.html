@@ -40,7 +40,7 @@
         /* Day Cards */
         .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: 0.3s; background: #161b22; }
         .day-card.is-holiday { background: var(--holiday-bg); border-color: var(--holiday-border); }
-        .day-card.is-holiday .task-table, .day-card.is-holiday .btn-primary { display: none; }
+        .day-card.is-holiday .task-table, .day-card.is-holiday .btn-primary:not(.holiday-toggle) { display: none; }
         .day-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .day-title { font-weight: 600; font-size: 14px; color: var(--ms-blue); }
         .day-actions { display: flex; gap: 8px; align-items: center; }
@@ -246,7 +246,7 @@
                         ${isHoliday ? '<strong style="color:var(--danger); margin-left:12px;">[HOLIDAY / DAY OFF]</strong>' : ''}
                     </span>
                     <div class="day-actions">
-                        <button class="btn ${holidayBtnClass}" style="padding:4px 10px; font-size:12px;" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>
+                        <button class="btn ${holidayBtnClass} holiday-toggle" style="padding:4px 10px; font-size:12px;" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>
                         ${copyBtnHtml}
                         <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addTask('${day}')">＋ Add Task</button>
                     </div>
