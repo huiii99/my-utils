@@ -52,7 +52,7 @@
         Multiline concatenation
       </label>
     </div>
-    <p class="toggle-hint" id="concat-hint" style="display:none">Strips surrounding <code>'</code> quotes from each line and joins into a single command.</p>
+    <p class="toggle-hint" id="concat-hint" style="display:none">Strips surrounding quotes and trailing <code>\</code> continuations from each line, then joins into a single command.</p>
 
     <div class="vars-section" id="vars-section" style="display:none">
       <h2>Variables <span class="count" id="var-count"></span></h2>
@@ -97,8 +97,10 @@
       return raw.split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0)
-        .map(line => line.replace(/^'/, '').replace(/'$/, ''))
-        .join('')
+        .map(line => line.replace(/^["']/, '').replace(/["']$/, '').trim())
+        .map(line => line.replace(/\\$/, '').trim())
+        .filter(line => line.length > 0)
+        .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
     }
