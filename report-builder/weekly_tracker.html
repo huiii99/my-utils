@@ -35,7 +35,9 @@
         .btn-success { background: #238636; color: white; padding: 10px 20px; font-size: 14px; }
         .btn-success:hover { background: #2ea043; }
         .btn-danger { background: #da363433; color: var(--danger); border: 1px solid #f8514966; }
+        .btn-danger:hover { background: #da363466; color: #ff7b72; }
         .btn-warning { background: #bb800926; color: #d29922; border: 1px solid #d2992266; }
+        .btn-warning:hover { background: #bb800959; color: #e3b341; }
 
         /* Day Cards */
         .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: 0.3s; background: #161b22; }
@@ -49,10 +51,11 @@
         .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .task-table th { background: #1c2128; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: #8b949e; font-weight: 600; }
         .task-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
-        .task-table input { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
+        .task-table input, .task-table textarea { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
+        .task-table textarea { font-family: inherit; resize: vertical; field-sizing: content; min-height: 1.5em; overflow: hidden; }
         
         /* Status Tags */
-        .status-select { padding: 4px; border-radius: 4px; font-weight: 600; font-size: 12px; width: 100%; border: 1px solid var(--border); }
+        .status-select { padding: 4px; border-radius: 4px; font-weight: 600; font-size: 12px; width: 100%; height: 30px; border: 1px solid var(--border); }
         .status-done { background: #23863633; color: #3fb950; }
         .status-progress { background: #1f6feb33; color: #58a6ff; }
         .status-blocked { background: #da363433; color: #f85149; }
@@ -262,8 +265,8 @@
                 } else {
                     state.tasks[day].forEach((t, i) => {
                         html += `<tr>
-                            <td><input type="text" value="${escapeHtml(t.title)}" onchange="updateTask('${day}',${i},'title',this.value)" placeholder="e.g. #33263"></td>
-                            <td><input type="text" value="${escapeHtml(t.desc)}" onchange="updateTask('${day}',${i},'desc',this.value)" placeholder="Task details..."></td>
+                            <td><textarea rows="1" onchange="updateTask('${day}',${i},'title',this.value)" placeholder="e.g. #33263">${escapeHtml(t.title)}</textarea></td>
+                            <td><textarea rows="1" onchange="updateTask('${day}',${i},'desc',this.value)" placeholder="Task details...">${escapeHtml(t.desc)}</textarea></td>
                             <td>
                                 <select class="status-select status-${t.status}" onchange="updateTask('${day}',${i},'status',this.value)">
                                     <option value="done" ${t.status==='done'?'selected':''}>✓ Done</option>
@@ -271,7 +274,7 @@
                                     <option value="blocked" ${t.status==='blocked'?'selected':''}>! Blocker</option>
                                 </select>
                             </td>
-                            <td><button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deleteTask('${day}',${i})">Del</button></td>
+                            <td><button class="btn btn-danger" style="width:100%; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button></td>
                         </tr>`;
                     });
                 }
@@ -291,9 +294,10 @@
                     <select onchange="updatePlan(${i},'priority',this.value)" style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border); background:#0d1117; color:#c9d1d9;">
                         <option value="High" ${p.priority==='High'?'selected':''}>🔴 High</option>
                         <option value="Medium" ${p.priority==='Medium'?'selected':''}>🟡 Medium</option>
+                        <option value="Low" ${p.priority==='Low'?'selected':''}>🟢 Low</option>
                     </select>
                 </td>
-                <td><button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="deletePlan(${i})">Del</button></td>
+                <td><button class="btn btn-danger" style="width:100%; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button></td>
             </tr>`;
         });
     }
@@ -530,8 +534,8 @@
         } else {
             state.plans.forEach((p, idx) => {
                 if (!p.text.trim()) return;
-                let bg = p.priority === 'High' ? '#fed9cc' : '#fff4ce';
-                let fg = p.priority === 'High' ? '#d13438' : '#ff8c00';
+                let bg = p.priority === 'High' ? '#fed9cc' : p.priority === 'Low' ? '#dff6dd' : '#fff4ce';
+                let fg = p.priority === 'High' ? '#d13438' : p.priority === 'Low' ? '#107c10' : '#ff8c00';
                 out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
                     `<td width="32" valign="middle" style="padding:6px 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="#f0ebf8" style="background-color:#f0ebf8; width:20px; height:20px; color:#8764b8; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${idx+1}</td></tr></table>` +
