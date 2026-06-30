@@ -11,11 +11,9 @@
     /* Sidebar */
     .sidebar {
       width: 260px; min-width: 260px; background: #010409; border-right: 1px solid #21262d;
-      display: flex; flex-direction: column; padding: 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
     }
-    .sidebar-header {
-      padding: 20px 20px 16px; border-bottom: 1px solid #21262d;
-    }
+    .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid #21262d; }
     .sidebar-header h1 { font-size: 1.2rem; color: #58a6ff; display: flex; align-items: center; gap: 8px; }
     .sidebar-header p { font-size: 0.75rem; color: #484f58; margin-top: 4px; }
     .nav-list { list-style: none; padding: 12px 8px; flex: 1; }
@@ -27,107 +25,17 @@
     .nav-item:hover { background: #161b22; color: #c9d1d9; }
     .nav-item.active { background: #1f6feb22; color: #58a6ff; font-weight: 600; }
     .nav-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
-    .nav-item .badge {
-      margin-left: auto; background: #30363d; color: #8b949e; font-size: 0.7rem;
-      padding: 1px 6px; border-radius: 10px; font-weight: 600;
-    }
 
     /* Main content */
     .main { margin-left: 260px; flex: 1; min-height: 100vh; }
     .tool-page { display: none; padding: 32px 40px; max-width: 960px; }
     .tool-page.active { display: block; }
     .tool-page.full-width { max-width: 100%; padding: 0; }
-    .tool-page iframe { width: 100%; height: calc(100vh); border: none; background: #0d1117; }
-
-    /* Shared tool styles */
-    .tool-title { font-size: 1.5rem; color: #f0f6fc; margin-bottom: 4px; }
-    .tool-subtitle { color: #8b949e; margin-bottom: 24px; font-size: 0.9rem; }
-    label.field-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
-    textarea {
-      width: 100%; height: 200px; background: #161b22; color: #c9d1d9;
-      border: 1px solid #30363d; border-radius: 8px; padding: 12px 14px;
-      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; font-size: 0.85rem;
-      resize: vertical; outline: none; transition: border-color 0.2s;
-    }
-    textarea:focus { border-color: #58a6ff; }
-    .actions { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-    .btn {
-      padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer;
-      font-size: 0.85rem; font-weight: 600; transition: all 0.15s;
-    }
-    .btn-primary { background: #238636; color: #fff; }
-    .btn-primary:hover { background: #2ea043; }
-    .btn-secondary { background: #30363d; color: #c9d1d9; }
-    .btn-secondary:hover { background: #484f58; }
-    .toast {
-      position: fixed; bottom: 24px; right: 24px; background: #238636; color: #fff;
-      padding: 10px 20px; border-radius: 8px; font-size: 0.85rem;
-      opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100;
-    }
-    .toast.show { opacity: 1; }
-
-    /* ---- CI Failures specific ---- */
-    .limit-group { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; }
-    .limit-group input[type="number"] {
-      width: 60px; background: #161b22; color: #c9d1d9;
-      border: 1px solid #30363d; border-radius: 6px; padding: 6px 8px;
-      font-size: 0.9rem; text-align: center; outline: none;
-    }
-    .limit-group input[type="number"]:focus { border-color: #58a6ff; }
-    #ci-output { display: flex; flex-direction: column; gap: 8px; }
-    .output-row { display: flex; align-items: center; gap: 8px; }
-    .output-row input {
-      flex: 1; background: #161b22; color: #7ee787;
-      border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px;
-      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace; font-size: 0.85rem; outline: none;
-    }
-    .output-row input:focus { border-color: #58a6ff; }
-    .output-row .btn { padding: 6px 12px; font-size: 0.8rem; }
-    .no-results { color: #484f58; font-size: 0.85rem; font-style: italic; }
-
-    /* ---- CLI Variable Filler specific ---- */
-    .var-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .var-label {
-      min-width: 140px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem;
-      color: #ffa657; background: #1c2128; padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d;
-    }
-    .var-arrow { color: #484f58; font-size: 1.2rem; }
-    .var-input {
-      flex: 1; padding: 8px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 6px;
-      color: #c9d1d9; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem; outline: none;
-    }
-    .var-input:focus { border-color: #58a6ff; }
-    .var-input::placeholder { color: #484f58; }
-    .vars-section h2 { font-size: 1.05rem; color: #c9d1d9; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .vars-section h2 .count { background: #1f6feb; color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
-    .output-box {
-      position: relative; background: #161b22; border: 1px solid #30363d; border-radius: 8px;
-      padding: 14px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.9rem;
-      line-height: 1.6; white-space: pre-wrap; word-break: break-all; min-height: 48px; color: #c9d1d9;
-    }
-    .output-box .filled { color: #7ee787; }
-    .output-box .unfilled { color: #ffa657; }
-    .copy-float {
-      position: absolute; top: 8px; right: 8px; background: #21262d; border: 1px solid #30363d;
-      color: #8b949e; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
-    }
-    .copy-float:hover { background: #30363d; color: #c9d1d9; }
-    .copy-float.copied { background: #238636; border-color: #2ea043; color: #fff; }
-    .toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-    .toggle-label { font-size: 0.85rem; color: #8b949e; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
-    .toggle-switch {
-      position: relative; width: 40px; height: 22px; background: #30363d; border-radius: 11px;
-      cursor: pointer; transition: background 0.2s; display: inline-block;
-    }
-    .toggle-switch.active { background: #238636; }
-    .toggle-switch::after {
-      content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
-      background: #c9d1d9; border-radius: 50%; transition: transform 0.2s;
-    }
-    .toggle-switch.active::after { transform: translateX(18px); }
-    .toggle-hint { font-size: 0.78rem; color: #484f58; margin-top: 4px; font-style: italic; }
+    .tool-page iframe { width: 100%; height: 100vh; border: none; background: #0d1117; }
 
     /* Home page */
+    .tool-title { font-size: 1.5rem; color: #f0f6fc; margin-bottom: 4px; }
+    .tool-subtitle { color: #8b949e; margin-bottom: 24px; font-size: 0.9rem; }
     .tool-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 24px; }
     .tool-card {
       background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px;
@@ -141,33 +49,22 @@
 </head>
 <body>
 
-  <!-- Sidebar -->
   <nav class="sidebar">
     <div class="sidebar-header">
       <h1>🛠️ My Dev Utils</h1>
       <p>Azure CLI Developer Tools</p>
     </div>
     <ul class="nav-list">
-      <li class="nav-item active" data-page="home">
-        <span class="icon">🏠</span> Home
-      </li>
-      <li class="nav-item" data-page="ci-failures">
-        <span class="icon">🔍</span> Extract CI Failures
-      </li>
-      <li class="nav-item" data-page="cli-var">
-        <span class="icon">🔧</span> CLI Variable Filler
-      </li>
-      <li class="nav-item" data-page="report-builder">
-        <span class="icon">📋</span> Report Builder
-      </li>
+      <li class="nav-item" data-page="home"><span class="icon">🏠</span> Home</li>
+      <li class="nav-item" data-page="ci-failures"><span class="icon">🔍</span> Extract CI Failures</li>
+      <li class="nav-item" data-page="cli-var"><span class="icon">🔧</span> CLI Variable Filler</li>
+      <li class="nav-item" data-page="report-builder"><span class="icon">📋</span> Report Builder</li>
     </ul>
   </nav>
 
-  <!-- Main content -->
   <div class="main">
 
-    <!-- HOME -->
-    <div class="tool-page active" id="page-home">
+    <div class="tool-page" id="page-home">
       <h1 class="tool-title">My Dev Utils</h1>
       <p class="tool-subtitle">A collection of productivity tools for Azure CLI developers. Select a tool from the sidebar or click below.</p>
       <div class="tool-cards">
@@ -189,75 +86,21 @@
       </div>
     </div>
 
-    <!-- EXTRACT CI FAILURES -->
-    <div class="tool-page" id="page-ci-failures">
-      <h1 class="tool-title">Extract CI Failures</h1>
-      <p class="tool-subtitle">Paste CI failure logs, get <code>azdev test</code> commands instantly.</p>
-
-      <label class="field-label" for="ci-input">Paste CI failure logs</label>
-      <textarea id="ci-input" placeholder="FAILED src/azure-cli/.../test_network_commands.py::NetworkLoadBalancerWithSku::test_network_lb_sku
-FAILED src/azure-cli/.../test_network_commands.py::NetworkLoadBalancerWithZone::test_network_lb_zone
-..."></textarea>
-
-      <div class="limit-group">
-        <label class="field-label" for="ci-limit" style="margin-bottom:0;text-transform:none">Tests per line:</label>
-        <input id="ci-limit" type="number" value="6" min="1" max="50">
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-primary" onclick="ciConvert()">Convert</button>
-        <button class="btn btn-secondary" onclick="ciCopyAll()">Copy All</button>
-        <button class="btn btn-secondary" onclick="ciClear()">Clear</button>
-      </div>
-
-      <div style="margin-top:16px">
-        <label class="field-label">Output</label>
-        <div id="ci-output"></div>
-      </div>
+    <div class="tool-page full-width" id="page-ci-failures">
+      <iframe data-src="extract-ci-failures/index.html"></iframe>
     </div>
 
-    <!-- CLI VARIABLE FILLER -->
-    <div class="tool-page" id="page-cli-var">
-      <h1 class="tool-title">CLI Variable Filler</h1>
-      <p class="tool-subtitle">Paste a CLI command with <code>{variables}</code> and fill in the values below.</p>
-
-      <label class="field-label" for="cli-cmd-input">Command Template</label>
-      <textarea id="cli-cmd-input" style="height:100px" placeholder="e.g. network lb create -g {rg} -n {lb_name} --sku Standard"></textarea>
-      <div class="toggle-row">
-        <label class="toggle-label" onclick="cliToggleConcat()">
-          <span class="toggle-switch" id="cli-concat-toggle"></span>
-          Multiline concatenation
-        </label>
-      </div>
-      <p class="toggle-hint" id="cli-concat-hint" style="display:none">Strips surrounding <code>'</code> quotes from each line and joins into a single command.</p>
-
-      <div class="vars-section" id="cli-vars-section" style="display:none;margin-top:24px">
-        <h2>Variables <span class="count" id="cli-var-count"></span></h2>
-        <div id="cli-vars-container"></div>
-      </div>
-
-      <div id="cli-output-section" style="display:none;margin-top:24px">
-        <label class="field-label">Resolved Command</label>
-        <div class="output-box" id="cli-output-box">
-          <button class="copy-float" id="cli-copy-btn" onclick="cliCopyOutput()">Copy</button>
-          <span id="cli-output-text"></span>
-        </div>
-      </div>
+    <div class="tool-page full-width" id="page-cli-var">
+      <iframe data-src="replace-cli-var/index.html"></iframe>
     </div>
 
-    <!-- REPORT BUILDER (iframe) -->
     <div class="tool-page full-width" id="page-report-builder">
-      <iframe id="report-iframe" data-src="report-builder/weekly_tracker.html"></iframe>
+      <iframe data-src="report-builder/weekly_tracker.html"></iframe>
     </div>
 
   </div>
 
-  <div class="toast" id="toast">Copied to clipboard!</div>
-
   <script>
-    // ============================================================
-    // Navigation
-    // ============================================================
     const navItems = document.querySelectorAll('.nav-item[data-page]');
     const toolCards = document.querySelectorAll('.tool-card[data-page]');
     const pages = document.querySelectorAll('.tool-page');
@@ -265,169 +108,19 @@ FAILED src/azure-cli/.../test_network_commands.py::NetworkLoadBalancerWithZone::
     function switchPage(pageId) {
       navItems.forEach(n => n.classList.toggle('active', n.dataset.page === pageId));
       pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + pageId));
+      localStorage.setItem('activeToolPage', pageId);
 
-      // Lazy-load report builder iframe
-      if (pageId === 'report-builder') {
-        const iframe = document.getElementById('report-iframe');
-        if (!iframe.src && iframe.dataset.src) {
-          iframe.src = iframe.dataset.src;
-        }
+      const activePage = document.getElementById('page-' + pageId);
+      if (activePage) {
+        const iframe = activePage.querySelector('iframe[data-src]');
+        if (iframe && !iframe.src) iframe.src = iframe.dataset.src;
       }
     }
 
     navItems.forEach(item => item.addEventListener('click', () => switchPage(item.dataset.page)));
     toolCards.forEach(card => card.addEventListener('click', () => switchPage(card.dataset.page)));
 
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg || 'Copied to clipboard!';
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 1500);
-    }
-
-    // ============================================================
-    // Extract CI Failures
-    // ============================================================
-    const ciInput = document.getElementById('ci-input');
-    const ciOutput = document.getElementById('ci-output');
-    const ciLimitEl = document.getElementById('ci-limit');
-
-    function ciParse(raw) {
-      const names = [];
-      for (const line of raw.split('\n')) {
-        const m = line.match(/FAILED\s+\S+::(\w+)$/);
-        if (m) names.push(m[1]);
-      }
-      return names;
-    }
-
-    function ciConvert() {
-      const limit = Math.max(1, parseInt(ciLimitEl.value) || 6);
-      const names = ciParse(ciInput.value);
-      ciOutput.innerHTML = '';
-      if (names.length === 0) {
-        ciOutput.innerHTML = '<span class="no-results">(no FAILED test lines detected)</span>';
-        return;
-      }
-      for (let i = 0; i < names.length; i += limit) {
-        const cmd = 'azdev test ' + names.slice(i, i + limit).join(' ');
-        const row = document.createElement('div');
-        row.className = 'output-row';
-        const inp = document.createElement('input');
-        inp.type = 'text'; inp.value = cmd; inp.readOnly = true;
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-secondary';
-        btn.textContent = 'Copy';
-        btn.addEventListener('click', () => {
-          navigator.clipboard.writeText(inp.value).then(() => {
-            btn.textContent = 'Copied!';
-            setTimeout(() => btn.textContent = 'Copy', 1200);
-          });
-        });
-        row.appendChild(inp);
-        row.appendChild(btn);
-        ciOutput.appendChild(row);
-      }
-    }
-
-    function ciCopyAll() {
-      const inputs = ciOutput.querySelectorAll('.output-row input');
-      if (!inputs.length) return;
-      navigator.clipboard.writeText(Array.from(inputs).map(i => i.value).join('\n')).then(() => showToast());
-    }
-
-    function ciClear() { ciInput.value = ''; ciOutput.innerHTML = ''; }
-
-    ciInput.addEventListener('paste', () => setTimeout(ciConvert, 0));
-
-    // ============================================================
-    // CLI Variable Filler
-    // ============================================================
-    const cliCmdInput = document.getElementById('cli-cmd-input');
-    const cliVarsSection = document.getElementById('cli-vars-section');
-    const cliVarsContainer = document.getElementById('cli-vars-container');
-    const cliVarCount = document.getElementById('cli-var-count');
-    const cliOutputSection = document.getElementById('cli-output-section');
-    const cliOutputText = document.getElementById('cli-output-text');
-    const cliCopyBtn = document.getElementById('cli-copy-btn');
-
-    let cliCurrentVars = [];
-    let cliVarValues = {};
-    let cliConcatMode = false;
-
-    cliCmdInput.addEventListener('input', cliParseCommand);
-
-    function cliToggleConcat() {
-      cliConcatMode = !cliConcatMode;
-      document.getElementById('cli-concat-toggle').classList.toggle('active', cliConcatMode);
-      document.getElementById('cli-concat-hint').style.display = cliConcatMode ? 'block' : 'none';
-      cliParseCommand();
-    }
-
-    function cliPreprocess(raw) {
-      if (!cliConcatMode) return raw;
-      return raw.split('\n').map(l => l.trim()).filter(l => l.length > 0)
-        .map(l => l.replace(/^'/, '').replace(/'$/, '')).join('').replace(/\s+/g, ' ').trim();
-    }
-
-    function cliParseCommand() {
-      const cmd = cliPreprocess(cliCmdInput.value);
-      const matches = [...cmd.matchAll(/\{([^}]+)\}/g)];
-      const uniqueVars = [...new Set(matches.map(m => m[1]))];
-      const old = { ...cliVarValues };
-      cliVarValues = {};
-      uniqueVars.forEach(v => { cliVarValues[v] = old[v] || ''; });
-      cliCurrentVars = uniqueVars;
-      cliRenderVars();
-      cliRenderOutput();
-    }
-
-    function cliRenderVars() {
-      if (cliCurrentVars.length === 0) {
-        cliVarsSection.style.display = 'none';
-        cliOutputSection.style.display = 'none';
-        return;
-      }
-      cliVarsSection.style.display = 'block';
-      cliOutputSection.style.display = 'block';
-      cliVarCount.textContent = cliCurrentVars.length;
-      cliVarsContainer.innerHTML = cliCurrentVars.map((v, i) => `
-        <div class="var-row">
-          <div class="var-label">${i + 1}. ${v}</div>
-          <span class="var-arrow">→</span>
-          <input class="var-input" type="text" data-var="${v}" value="${escHtml(cliVarValues[v])}" placeholder="Enter value for ${v}" oninput="cliUpdateVar(this)">
-        </div>
-      `).join('');
-    }
-
-    function cliUpdateVar(el) { cliVarValues[el.dataset.var] = el.value; cliRenderOutput(); }
-
-    function cliRenderOutput() {
-      const cmd = cliPreprocess(cliCmdInput.value);
-      if (!cmd || cliCurrentVars.length === 0) return;
-      let html = escHtml(cmd);
-      cliCurrentVars.forEach(v => {
-        const esc = escHtml(`{${v}}`);
-        if (cliVarValues[v]) {
-          html = html.replaceAll(esc, `<span class="filled">${escHtml(cliVarValues[v])}</span>`);
-        } else {
-          html = html.replaceAll(esc, `<span class="unfilled">{${escHtml(v)}}</span>`);
-        }
-      });
-      cliOutputText.innerHTML = html;
-    }
-
-    function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-
-    function cliCopyOutput() {
-      let text = cliPreprocess(cliCmdInput.value);
-      cliCurrentVars.forEach(v => { if (cliVarValues[v]) text = text.replaceAll(`{${v}}`, cliVarValues[v]); });
-      navigator.clipboard.writeText(text).then(() => {
-        cliCopyBtn.textContent = '✓ Copied';
-        cliCopyBtn.classList.add('copied');
-        setTimeout(() => { cliCopyBtn.textContent = 'Copy'; cliCopyBtn.classList.remove('copied'); }, 1500);
-      });
-    }
+    switchPage(localStorage.getItem('activeToolPage') || 'home');
   </script>
 </body>
 </html>
