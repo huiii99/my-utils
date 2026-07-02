@@ -20,7 +20,11 @@
         
         /* Config */
         .config-section { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .config-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+        .config-grid .form-group { grid-column: span 3; }        /* default width */
+        .config-grid .fg-dept { grid-column: span 2; }           /* Department: shorter */
+        .config-grid .fg-week { grid-column: span 4; }           /* Week Range: wider */
+        @media (max-width: 720px) { .config-grid .form-group { grid-column: span 12 !important; } }
         .form-group label { display: block; font-size: 12px; font-weight: 600; color: #8b949e; margin-bottom: 4px; }
         .form-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .required-dot::after { content: " *"; color: var(--danger); }
@@ -38,6 +42,24 @@
         .btn-danger:hover { background: #da363466; color: #ff7b72; }
         .btn-warning { background: #bb800926; color: #d29922; border: 1px solid #d2992266; }
         .btn-warning:hover { background: #bb800959; color: #e3b341; }
+
+        /* Settings gear menu (native <details>) */
+        .settings-menu { position: relative; }
+        .settings-menu > summary { list-style: none; padding: 8px 12px; cursor: pointer; user-select: none; }
+        .settings-menu > summary::-webkit-details-marker { display: none; }
+        .settings-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; background: #1c2128; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 6px; min-width: 190px; display: flex; flex-direction: column; gap: 2px; }
+        .settings-item { text-align: left; padding: 8px 12px; border: none; border-radius: 6px; background: transparent; color: #c9d1d9; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .settings-item:hover { background: #30363d; }
+        .settings-item.danger { color: var(--danger); }
+        .settings-item.danger:hover { background: #da363433; color: #ff7b72; }
+
+        /* Week range stepper */
+        .week-stepper { display: flex; align-items: center; gap: 6px; background: #0d1117; border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; }
+        .week-nav { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px; background: #1c2128; color: var(--ms-blue); font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0; box-sizing: border-box; }
+        .week-nav:hover { background: #30363d; color: #fff; }
+        .week-label { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .week-today { height: 28px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 4px; background: #1c2128; color: #8b949e; font-size: 11px; font-weight: 600; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+        .week-today:hover { background: #30363d; color: #c9d1d9; }
 
         /* Day Cards */
         .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: 0.3s; background: #161b22; }
@@ -79,16 +101,38 @@
         <div class="config-grid">
             <div class="form-group"><label class="required-dot">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
             <div class="form-group"><label class="required-dot">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
-            <div class="form-group"><label class="required-dot">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
-            <div class="form-group"><label class="required-dot">Week Range</label><select id="cfg-week" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; font-size:13px; background:#0d1117; color:#c9d1d9;"></select></div>
+            <div class="form-group fg-dept"><label class="required-dot">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
+            <div class="form-group fg-week"><label class="required-dot">Week Range</label>
+                <div class="week-stepper">
+                    <button type="button" class="week-nav" onclick="stepWeek(-1)" title="Previous week">‹</button>
+                    <span id="cfg-week-label" class="week-label">—</span>
+                    <button type="button" class="week-nav" onclick="stepWeek(1)" title="Next week">›</button>
+                    <button type="button" class="week-today" onclick="goCurrentWeek()" title="Jump to current week">Today</button>
+                    <input type="hidden" id="cfg-week">
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="action-bar">
         <h2>📅 Daily Work Tracker</h2>
-        <div>
-            <button class="btn btn-danger" onclick="clearAllData()">Clear All Records</button>
-            <button class="btn btn-success" onclick="openReviewModal()">⚡ Generate Weekly Report</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <details class="settings-menu">
+                <summary class="btn btn-secondary" title="Settings">⚙️</summary>
+                <div class="settings-panel">
+                    <button class="settings-item" onclick="exportBackup(); this.closest('details').open=false">⬇ Backup data</button>
+                    <button class="settings-item" onclick="document.getElementById('import-file').click(); this.closest('details').open=false">⬆ Restore data</button>
+                    <button class="settings-item danger" onclick="clearAllData(); this.closest('details').open=false">🗑 Clear all records</button>
+                </div>
+            </details>
+            <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
+            <select id="report-scope" style="padding:8px; border:1px solid var(--border); border-radius:4px; font-size:13px; background:#0d1117; color:#c9d1d9; margin-right:6px;">
+                <option value="weekly">Weekly Report</option>
+                <option value="monthly">Monthly Report</option>
+                <!-- ponytail: quarterly hidden for now; logic stays, re-add option to enable -->
+                <!-- <option value="quarterly">Quarterly Review</option> -->
+            </select>
+            <button class="btn btn-success" onclick="openReviewModal()">⚡ Generate Report</button>
         </div>
     </div>
 
@@ -145,78 +189,146 @@
         }
         if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
         
-        // Populate week range select
-        function populateWeekSelect() {
-            const select = document.getElementById('cfg-week');
-            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const year = now.getFullYear();
-            // Find first Monday of the year
-            let d = new Date(year, 0, 1);
-            while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
-            
-            let options = [];
-            while (d.getFullYear() === year) {
-                let fri = new Date(d);
-                fri.setDate(fri.getDate() + 4);
-                // Only include weeks where Friday hasn't passed yet
-                if (fri >= today) {
-                    let monDay = d.getDate();
-                    let monMonth = months[d.getMonth()];
-                    let friDay = fri.getDate();
-                    let friMonth = months[fri.getMonth()];
-                    let label;
-                    if (d.getMonth() === fri.getMonth()) {
-                        label = `Week of ${monDay} ${monMonth} - ${friDay} ${monMonth} · ${year}`;
-                    } else {
-                        label = `Week of ${monDay} ${monMonth} - ${friDay} ${friMonth} · ${year}`;
-                    }
-                    options.push(label);
-                }
-                d.setDate(d.getDate() + 7);
-            }
-            options.forEach(opt => {
-                const el = document.createElement('option');
-                el.value = opt;
-                el.textContent = opt;
-                select.appendChild(el);
-            });
+        // Init week stepper: restore saved week or default to the current week.
+        const savedWeek = localStorage.getItem('cfg-week');
+        setWeek((savedWeek && weekMonday(savedWeek)) || mondayOf(new Date()), true);
 
-            // Auto-select current week
-            const saved = localStorage.getItem('cfg-week');
-            if (saved && options.includes(saved)) {
-                select.value = saved;
-            } else {
-                select.selectedIndex = 0;
-                localStorage.setItem('cfg-week', select.value);
-            }
-        }
-        populateWeekSelect();
-
-        ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'].forEach(id => {
+        ['cfg-name', 'cfg-email', 'cfg-dept'].forEach(id => {
             if(localStorage.getItem(id)) document.getElementById(id).value = localStorage.getItem(id);
-            const evtType = id === 'cfg-week' ? 'change' : 'input';
-            document.getElementById(id).addEventListener(evtType, () => {
+            document.getElementById(id).addEventListener('input', () => {
                 localStorage.setItem(id, document.getElementById(id).value);
-                if(id === 'cfg-week') renderTracker();
             });
         });
+        document.getElementById('cfg-week').addEventListener('change', () => loadWeekIntoState(document.getElementById('cfg-week').value));
+        // Seed history with the existing single-week save so rollups have data.
+        if (Object.keys(loadHistory()).length === 0) saveState();
         renderTracker();
     };
 
-    function saveState() { localStorage.setItem('dd_state_save_v3', JSON.stringify(state)); }
+    function saveState() {
+        localStorage.setItem('dd_state_save_v3', JSON.stringify(state));
+        const wk = (document.getElementById('cfg-week') || {}).value;
+        if (wk) {
+            const hist = loadHistory();
+            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans };
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+        }
+    }
+    const HISTORY_KEY = 'dd_week_history_v1';
+    const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch(e) { return {}; } }
+    // Keys that make up a complete backup: current buffer, week history, config fields.
+    const BACKUP_KEYS = ['dd_state_save_v3', HISTORY_KEY, 'cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'];
+    function exportBackup() {
+        const data = {};
+        BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data[k] = v; });
+        const bundle = { version: 1, exportedAt: new Date().toISOString(), data };
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `work-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+    function applyBackup(bundle) {
+        if (!bundle || !bundle.data || typeof bundle.data !== 'object' || !('dd_state_save_v3' in bundle.data)) {
+            throw new Error('not a Work Tracker backup');
+        }
+        BACKUP_KEYS.forEach(k => {
+            if (k in bundle.data) localStorage.setItem(k, bundle.data[k]);
+            else localStorage.removeItem(k);
+        });
+    }
+    function importBackup(input) {
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            let bundle;
+            try {
+                bundle = JSON.parse(reader.result);
+                if (!bundle || !bundle.data || !('dd_state_save_v3' in bundle.data)) throw new Error('not a Work Tracker backup');
+            } catch (e) {
+                alert('❌ Could not restore: ' + e.message);
+                return;
+            }
+            if (!confirm('⚠ This replaces all current data with the backup. Continue?')) return;
+            applyBackup(bundle);
+            location.reload();
+        };
+        reader.readAsText(file);
+    }
+    // Parse a week label ("Week of 5 Aug - 9 Aug · 2026") into its Monday Date.
+    function weekMonday(weekLabel) {
+        const m = weekLabel.match(/Week of\s+(\d+)\s+([A-Za-z]+).*·\s*(\d{4})/);
+        if (!m) return null;
+        const mon = MONTHS_SHORT.indexOf(m[2]);
+        if (mon < 0) return null;
+        return new Date(parseInt(m[3], 10), mon, parseInt(m[1], 10));
+    }
+    // Date tag ("9 Aug") for a given weekday within any week label.
+    function dateTagFor(weekLabel, dayName) {
+        const match = weekLabel.match(/(\d+)\s+([A-Za-z]+)/);
+        if (!match) return '';
+        const off = DAYS.indexOf(dayName);
+        if (off === -1) return '';
+        return `${parseInt(match[1], 10) + off} ${match[2]}`;
+    }
+    // ----- Week range stepper (‹ label ›) -----
+    let weekCursor = null; // Monday Date of the selected week
+    function mondayOf(date) {
+        const day = (date.getDay() + 6) % 7; // 0 = Monday
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate() - day);
+    }
+    function weekLabelFromMonday(d) {
+        const fri = new Date(d); fri.setDate(fri.getDate() + 4);
+        const mm = MONTHS_SHORT[d.getMonth()], fm = MONTHS_SHORT[fri.getMonth()];
+        const tail = `${fri.getDate()} ${d.getMonth() === fri.getMonth() ? mm : fm} · ${d.getFullYear()}`;
+        return `Week of ${d.getDate()} ${mm} - ${tail}`;
+    }
+    function setWeek(monday, silent) {
+        weekCursor = monday;
+        const label = weekLabelFromMonday(monday);
+        const input = document.getElementById('cfg-week');
+        input.value = label;
+        document.getElementById('cfg-week-label').textContent = label.replace('Week of ', '');
+        localStorage.setItem('cfg-week', label);
+        if (!silent) input.dispatchEvent(new Event('change'));
+    }
+    function stepWeek(delta) {
+        const d = new Date(weekCursor);
+        d.setDate(d.getDate() + delta * 7);
+        setWeek(d);
+    }
+    function goCurrentWeek() { setWeek(mondayOf(new Date())); }
+    // A brand-new empty week (one blank task row, like a fresh start).
+    function emptyWeek() {
+        const tasks = {}, holidays = {};
+        DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress' });
+        return { tasks, plans: [], holidays };
+    }
+    // Load the selected week's saved data into state (or an empty week), then render.
+    function loadWeekIntoState(label) {
+        const hist = loadHistory();
+        if (hist[label]) {
+            const h = JSON.parse(JSON.stringify(hist[label]));
+            const tasks = {}, holidays = {};
+            DAYS.forEach(d => { tasks[d] = (h.tasks && h.tasks[d]) || []; holidays[d] = !!(h.holidays && h.holidays[d]); });
+            state = { tasks, plans: h.plans || [], holidays };
+        } else {
+            state = emptyWeek();
+        }
+        localStorage.setItem('dd_state_save_v3', JSON.stringify(state));
+        renderTracker();
+    }
     function escapeHtml(s) { return s ? s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : ''; }
 
     function autoCalculateDateTag(dayName) {
-        const weekInputValue = document.getElementById('cfg-week').value;
-        const match = weekInputValue.match(/(\d+)\s+([A-Za-z]+)/);
-        if (!match) return '';
-        const startDay = parseInt(match[1], 10);
-        const monthStr = match[2];
-        const dayOffset = DAYS.indexOf(dayName);
-        if (dayOffset === -1) return '';
-        return `${startDay + dayOffset} ${monthStr}`;
+        return dateTagFor(document.getElementById('cfg-week').value, dayName);
     }
 
     function toggleHoliday(day) {
@@ -347,7 +459,9 @@
             alert("❌ Please fill in Name and Week Range in the configuration first.");
             return;
         }
-        const subject = `${week} - ${name}'s Weekly Report`;
+        const scope = (document.getElementById('report-scope') || {}).value || 'weekly';
+        const meta = reportMeta(scope, week);
+        const subject = `${meta.badge} - ${name}'s ${meta.title}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(subject).then(() => {
                 flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
@@ -375,32 +489,49 @@
         document.body.removeChild(ta);
     }
 
-    /* 💡 核心底层修复：全内联高解析度 HTML 生成器 (Outlook 完美适配版) */
-    function buildFinalReportContent() {
-        const config = validateConfiguration();
-        if(!config) return null; 
+    // Gather the week snapshots to include for a scope: weekly = current only;
+    // monthly/quarterly = every stored week whose Monday falls in the same
+    // month/quarter, with the live (unsaved) current week taking precedence.
+    function collectSnapshots(scope, currentWeek) {
+        const live = { week: currentWeek, tasks: state.tasks, holidays: state.holidays };
+        if (scope === 'weekly') return [live];
+        const cur = weekMonday(currentWeek);
+        if (!cur) return [live];
+        const hist = loadHistory();
+        const snaps = {};
+        Object.keys(hist).forEach(wk => { snaps[wk] = { week: wk, tasks: hist[wk].tasks || {}, holidays: hist[wk].holidays || {} }; });
+        snaps[currentWeek] = live;
+        const inRange = (snap) => {
+            const d = weekMonday(snap.week);
+            if (!d || d.getFullYear() !== cur.getFullYear()) return false;
+            return scope === 'monthly' ? d.getMonth() === cur.getMonth()
+                : Math.floor(d.getMonth() / 3) === Math.floor(cur.getMonth() / 3);
+        };
+        return Object.values(snaps).filter(inRange).sort((a, b) => weekMonday(a.week) - weekMonday(b.week));
+    }
 
+    // Flatten week snapshots into done/progress/blocked lists. keyByTitle merges a
+    // recurring task across weeks (ids differ per week) into one entry with a range.
+    function aggregateTasks(snapshots, keyByTitle) {
         let taskMap = new Map();
-        DAYS.forEach(d => {
-            if(state.holidays[d]) return;
-            const dateTag = autoCalculateDateTag(d);
-            if(state.tasks[d]) {
-                state.tasks[d].forEach(t => {
+        snapshots.forEach(snap => {
+            DAYS.forEach(d => {
+                if (snap.holidays && snap.holidays[d]) return;
+                const dateTag = dateTagFor(snap.week, d);
+                (snap.tasks[d] || []).forEach(t => {
                     if (!t.title.trim() && !t.desc.trim()) return;
-                    // Use composite key of id + desc to keep entries with different descriptions separate
-                    const mapKey = t.id + '||' + t.desc.trim();
+                    const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
+                    let dv = dateTag || d;
                     if (!taskMap.has(mapKey)) {
-                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, dates: [dateTag || d] });
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, dates: [dv] });
                     } else {
                         let existing = taskMap.get(mapKey);
                         existing.status = t.status; existing.title = t.title;
-                        let dv = dateTag || d;
                         if (!existing.dates.includes(dv)) existing.dates.push(dv);
                     }
                 });
-            }
+            });
         });
-
         let doneTasks = [], progTasks = [], blockTasks = [];
         taskMap.forEach(t => {
             let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
@@ -409,6 +540,32 @@
             else if (t.status === 'blocked') blockTasks.push(compiled);
             else if (t.status === 'progress') progTasks.push(compiled);
         });
+        return { doneTasks, progTasks, blockTasks };
+    }
+
+    // Title / badge / footer / plans-visibility for each scope.
+    function reportMeta(scope, currentWeek) {
+        const d = weekMonday(currentWeek);
+        if (scope === 'monthly') {
+            const badge = d ? `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}` : 'Monthly';
+            return { title: 'Monthly Report', badge, showPlans: false };
+        }
+        if (scope === 'quarterly') {
+            const badge = d ? `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}` : 'Quarterly';
+            return { title: 'Quarterly Review', badge, showPlans: false };
+        }
+        return { title: 'Weekly Report', badge: currentWeek, showPlans: true };
+    }
+
+    /* 💡 核心底层修复：全内联高解析度 HTML 生成器 (Outlook 完美适配版) */
+    function buildFinalReportContent() {
+        const config = validateConfiguration();
+        if(!config) return null; 
+
+        const scope = (document.getElementById('report-scope') || {}).value || 'weekly';
+        const meta = reportMeta(scope, config.week);
+        const snapshots = collectSnapshots(scope, config.week);
+        const { doneTasks, progTasks, blockTasks } = aggregateTasks(snapshots, scope !== 'weekly');
 
         // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
         // Helper: build a section header row with icon + title
@@ -455,12 +612,12 @@
             `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">` +
             `<tr>` +
             `<td align="left" valign="middle" style="padding:0; vertical-align:middle;">` +
-            `<h1 style="font-size:22px; font-weight:600; margin:0; color:#ffffff; font-family:'Segoe UI',sans-serif; line-height:1.2;">Weekly Report</h1>` +
+            `<h1 style="font-size:22px; font-weight:600; margin:0; color:#ffffff; font-family:'Segoe UI',sans-serif; line-height:1.2;">${escapeHtml(meta.title)}</h1>` +
             `<div style="font-size:16px; margin-top:4px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">${escapeHtml(config.name)}</div>` +
             `</td>` +
             `<td align="right" valign="middle" style="padding:0; vertical-align:middle; text-align:right;">` +
             `<table border="0" cellspacing="0" cellpadding="0" style="display:inline-block; border-collapse:collapse; border-radius:20px;">` +
-            `<tr><td align="center" valign="middle" bgcolor="#339be0" style="background-color:#339be0; padding:6px 14px; color:#ffffff; font-size:13px; font-weight:500; font-family:'Segoe UI',sans-serif; white-space:nowrap; line-height:1; border-radius:20px;">${escapeHtml(config.week)}</td></tr>` +
+            `<tr><td align="center" valign="middle" bgcolor="#339be0" style="background-color:#339be0; padding:6px 14px; color:#ffffff; font-size:13px; font-weight:500; font-family:'Segoe UI',sans-serif; white-space:nowrap; line-height:1; border-radius:20px;">${escapeHtml(meta.badge)}</td></tr>` +
             `</table>` +
             `</td></tr></table>` +
             `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding-top:16px; font-size:13px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">` +
@@ -524,7 +681,8 @@
 
         out += spacer;
 
-        // 4. Next Week Plans
+        // 4. Next Week Plans (weekly only)
+        if (meta.showPlans) {
         out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
             `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
             buildSectionHeader('#f0ebf8', '#8764b8', '→', 'Next Week Plans') +
@@ -548,9 +706,10 @@
             });
         }
         out += `</td></tr></table>`;
+        }
 
         // Footer
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:15px; font-size:11px; color:#9ca3af; font-family:'Segoe UI',sans-serif;">DDAzure Weekly Report | ${escapeHtml(config.week)}</td></tr></table>`;
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:15px; font-size:11px; color:#9ca3af; font-family:'Segoe UI',sans-serif;">DDAzure ${escapeHtml(meta.title)} | ${escapeHtml(meta.badge)}</td></tr></table>`;
 
         // Close container
         out += `</td></tr></table></div>`;
@@ -621,6 +780,31 @@
             btn.classList.remove('copied');
         }, 2500);
     }
+    // ponytail: minimal self-check. Open with ?selftest to run; asserts fail loud.
+    function runSelfTest() {
+        const assert = (c, m) => { if (!c) { console.error('SELFTEST FAIL:', m); alert('SELFTEST FAIL: ' + m); throw new Error(m); } };
+        const aug = weekMonday('Week of 3 Aug - 7 Aug · 2026');
+        assert(aug && aug.getMonth() === 7 && aug.getFullYear() === 2026, 'weekMonday parses month/year');
+        assert(Math.floor(aug.getMonth() / 3) === 2, 'Aug is quarter Q3 (index 2)');
+        // Same task title recurring across two weeks merges into one ranged entry.
+        const snaps = [
+            { week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'a', title: 'Ship X', desc: '', status: 'progress' }] } },
+            { week: 'Week of 10 Aug - 14 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'b', title: 'Ship X', desc: '', status: 'done' }] } }
+        ];
+        const agg = aggregateTasks(snaps, true);
+        assert(agg.doneTasks.length === 1 && agg.progTasks.length === 0, 'cross-week dedupe keeps latest status');
+        assert(agg.doneTasks[0].dateTag.includes('-'), 'merged entry shows a date range');
+        // Backup round-trip: export current keys, wipe them, re-import, keys return.
+        const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
+        const bundle = { version: 1, data: {} };
+        BACKUP_KEYS.forEach(k => { if (before[k] !== null) bundle.data[k] = before[k]; });
+        bundle.data['dd_state_save_v3'] = bundle.data['dd_state_save_v3'] || '{}';
+        applyBackup(bundle);
+        assert(localStorage.getItem('dd_state_save_v3') === bundle.data['dd_state_save_v3'], 'backup restores state key');
+        BACKUP_KEYS.forEach(k => { if (before[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, before[k]); });
+        console.log('SELFTEST PASS');
+    }
+    if (location.search.includes('selftest')) window.addEventListener('load', runSelfTest);
 </script>
 </body>
 </html>
