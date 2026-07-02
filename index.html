@@ -12,8 +12,10 @@
     .sidebar {
       width: 260px; min-width: 260px; background: #010409; border-right: 1px solid #21262d;
       display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10;
+      transition: transform 0.2s ease;
     }
-    .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid #21262d; }
+    body.sidebar-hidden .sidebar { transform: translateX(-100%); }
+    .sidebar-header { padding: 20px 44px 16px 20px; border-bottom: 1px solid #21262d; position: relative; }
     .sidebar-header h1 { font-size: 1.2rem; color: #58a6ff; display: flex; align-items: center; gap: 8px; }
     .sidebar-header p { font-size: 0.75rem; color: #484f58; margin-top: 4px; }
     .nav-list { list-style: none; padding: 12px 8px; flex: 1; }
@@ -27,7 +29,28 @@
     .nav-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
 
     /* Main content */
-    .main { margin-left: 260px; flex: 1; min-height: 100vh; }
+    .main { margin-left: 260px; flex: 1; min-height: 100vh; transition: margin-left 0.2s ease; }
+    body.sidebar-hidden .main { margin-left: 0; }
+
+    /* Burger toggle */
+    .burger {
+      position: fixed; top: 12px; left: 12px; z-index: 20;
+      width: 40px; height: 40px; border: 1px solid #30363d; border-radius: 8px;
+      background: #161b22; color: #c9d1d9; font-size: 1.2rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .burger:hover { background: #21262d; color: #58a6ff; }
+    /* Floating open button only shows while the sidebar is hidden. */
+    body:not(.sidebar-hidden) .burger { display: none; }
+
+    /* Close button inside the sidebar header */
+    .sidebar-close {
+      position: absolute; top: 16px; right: 12px;
+      width: 30px; height: 30px; border: 1px solid #30363d; border-radius: 6px;
+      background: transparent; color: #8b949e; font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-close:hover { background: #161b22; color: #58a6ff; }
     .tool-page { display: none; padding: 32px 40px; max-width: 960px; }
     .tool-page.active { display: block; }
     .tool-page.full-width { max-width: 100%; padding: 0; }
@@ -47,12 +70,15 @@
     .tool-card p { font-size: 0.82rem; color: #8b949e; line-height: 1.5; }
   </style>
 </head>
-<body>
+<body class="sidebar-hidden">
+
+  <button class="burger" onclick="toggleSidebar()" title="Toggle menu" aria-label="Toggle menu">☰</button>
 
   <nav class="sidebar">
     <div class="sidebar-header">
       <h1>🛠️ My Dev Utils</h1>
       <p>Azure CLI Developer Tools</p>
+      <button class="sidebar-close" onclick="toggleSidebar()" title="Hide menu" aria-label="Hide menu">✕</button>
     </div>
     <ul class="nav-list">
       <li class="nav-item" data-page="home"><span class="icon">🏠</span> Home</li>
@@ -119,6 +145,12 @@
 
     navItems.forEach(item => item.addEventListener('click', () => switchPage(item.dataset.page)));
     toolCards.forEach(card => card.addEventListener('click', () => switchPage(card.dataset.page)));
+
+    function toggleSidebar() {
+      const hidden = document.body.classList.toggle('sidebar-hidden');
+      localStorage.setItem('sidebarHidden', hidden ? '1' : '0');
+    }
+    if (localStorage.getItem('sidebarHidden') === '0') document.body.classList.remove('sidebar-hidden');
 
     switchPage(localStorage.getItem('activeToolPage') || 'home');
   </script>

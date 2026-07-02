@@ -1,6 +1,6 @@
 # 📅 Work Tracker & Report Builder
 
-A weekly work tracker that lets you log daily tasks and generate a formatted weekly report ready to paste into an email.
+A work tracker that lets you log daily tasks and generate a formatted **weekly, monthly** report ready to paste into an email.
 
 ## Features
 
@@ -8,8 +8,12 @@ A weekly work tracker that lets you log daily tasks and generate a formatted wee
 - Log tasks per day (Monday–Friday) with description and status (Done / In Progress / Blocked)
 - Mark days as holidays
 - Plan next week's items with priority levels
-- **Generate Weekly Report** — opens a review modal with an HTML preview and copy buttons for the email subject and formatted body
+- **Generate Report** — pick a scope (Weekly / Monthly) then open a review modal with an HTML preview and copy buttons for the email subject and formatted body
+  - **Weekly** — the current week's tasks plus a "Next Week Plans" section
+  - **Monthly** — rolls up every saved week in the current month; recurring tasks are merged into a date range
+- Each week you fill in is snapshotted to `localStorage`, building the history that monthly reports aggregate from
 - Data persists in `localStorage` across sessions
+- **Backup / Restore** — since data lives in browser `localStorage` (lost if you clear cache), use **⬇ Backup** to download a `.json` snapshot of everything (tasks, week history, and config), and **⬆ Restore** to load it back on any browser/machine
 
 ## Usage
 
