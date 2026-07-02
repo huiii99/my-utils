@@ -294,11 +294,11 @@
     }
     // Date tag ("9 Aug") for a given weekday within any week label.
     function dateTagFor(weekLabel, dayName) {
-        const match = weekLabel.match(/(\d+)\s+([A-Za-z]+)/);
-        if (!match) return '';
+        const monday = weekMonday(weekLabel);
         const off = DAYS.indexOf(dayName);
-        if (off === -1) return '';
-        return `${parseInt(match[1], 10) + off} ${match[2]}`;
+        if (!monday || off === -1) return '';
+        const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + off);
+        return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
     }
     // ----- Week range stepper (‹ label ›) -----
     let weekCursor = null; // Monday Date of the selected week
@@ -886,6 +886,8 @@
         const bagg = aggregateTasks(bsnap, true);
         assert(bagg.blockTasks.length === 1, 'blocked task aggregated');
         assert(bagg.blockTasks[0].blockerReason === 'Pending on API docs' && bagg.blockTasks[0].blockerUnblock === 'Ping platform team', 'blocker reason/unblock carried through aggregation');
+        // Weekday date tags roll over month boundaries.
+        assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
         const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
         const bundle = { version: 1, data: {} };
