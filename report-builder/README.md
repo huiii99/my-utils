@@ -6,6 +6,9 @@ A work tracker that lets you log daily tasks and generate a formatted **weekly, 
 
 - Configure your name, email, department, and week range
 - Log tasks per day (Monday–Friday) with description and status (Done / In Progress / Blocked)
+  - Setting a task to **Blocked** reveals inline fields to record the blocker reason and how to unblock it, which appear in the report's "Blockers & Risks" section
+- Log standalone **Blockers & Risks** not tied to any task (reason + how to unblock)
+- Record a weekly **Achievement** summary
 - Mark days as holidays
 - Plan next week's items with priority levels
 - **Generate Report** — pick a scope (Weekly / Monthly) then open a review modal with an HTML preview and copy buttons for the email subject and formatted body

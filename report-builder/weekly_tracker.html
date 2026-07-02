@@ -140,6 +140,26 @@
 
     <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
         <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #f85149;">🚧 Blockers &amp; Risks (not tied to a task)</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addBlockerItem()">＋ Add Blocker</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 45%;">🔒 Blocker reason</th><th style="width: 45%;">🔑 How to unblock</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="blockers-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #107c10;">🏆 Achievement</h3>
+        </div>
+        <textarea id="achievement-input" placeholder="What did you achieve this week?" style="width:100%; min-height:70px; box-sizing:border-box; padding:8px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;" oninput="updateAchievement(this.value)"></textarea>
+    </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
             <h3 style="font-size:15px; color: #8764b8;">🚀 Next Week Plans</h3>
             <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addPlanItem()">＋ Add Plan</button>
         </div>
@@ -176,6 +196,8 @@
     let state = { 
         tasks: { 'Monday': [], 'Tuesday': [], 'Wednesday': [], 'Thursday': [], 'Friday': [] }, 
         plans: [],
+        achievement: '',
+        blockers: [],
         holidays: { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false }
     };
 
@@ -185,9 +207,10 @@
         if(localStorage.getItem('dd_state_save_v3')) {
             state = JSON.parse(localStorage.getItem('dd_state_save_v3'));
         } else {
-            state.tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress' });
+            state.tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '' });
         }
         if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
+        if(!state.blockers) state.blockers = [];
         
         // Init week stepper: restore saved week or default to the current week.
         const savedWeek = localStorage.getItem('cfg-week');
@@ -210,7 +233,7 @@
         const wk = (document.getElementById('cfg-week') || {}).value;
         if (wk) {
             const hist = loadHistory();
-            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans };
+            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans, achievement: state.achievement, blockers: state.blockers };
             localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
         }
     }
@@ -308,8 +331,8 @@
     function emptyWeek() {
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
-        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress' });
-        return { tasks, plans: [], holidays };
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '' });
+        return { tasks, plans: [], holidays, achievement: '', blockers: [] };
     }
     // Load the selected week's saved data into state (or an empty week), then render.
     function loadWeekIntoState(label) {
@@ -318,7 +341,7 @@
             const h = JSON.parse(JSON.stringify(hist[label]));
             const tasks = {}, holidays = {};
             DAYS.forEach(d => { tasks[d] = (h.tasks && h.tasks[d]) || []; holidays[d] = !!(h.holidays && h.holidays[d]); });
-            state = { tasks, plans: h.plans || [], holidays };
+            state = { tasks, plans: h.plans || [], holidays, achievement: h.achievement || '', blockers: h.blockers || [] };
         } else {
             state = emptyWeek();
         }
@@ -341,6 +364,9 @@
         const container = document.getElementById('days-container');
         container.innerHTML = '';
 
+        const achEl = document.getElementById('achievement-input');
+        if (achEl) achEl.value = state.achievement || '';
+
         DAYS.forEach((day, index) => {
             const calculatedDate = autoCalculateDateTag(day);
             const isHoliday = state.holidays[day];
@@ -348,8 +374,9 @@
             let card = document.createElement('div');
             card.className = `day-card ${isHoliday ? 'is-holiday' : ''}`;
             
-            let copyBtnHtml = (index > 0 && !isHoliday) ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="copyUnfinishedSmart('${day}')">📋 Copy From Yesterday</button>` : '';
-            let holidayBtnText = isHoliday ? '🔓 Set as Working Day' : '🏖️ Set as Holiday / Off';
+            let copyBtnHtml = (index > 0 && !isHoliday) ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" title="Copy from yesterday" onclick="copyUnfinishedSmart('${day}')">📋</button>` : '';
+            let holidayBtnText = isHoliday ? '🔓' : '🏖️';
+            let holidayBtnTitleText = isHoliday ? '🔓 Set as Working Day' : '🏖️ Set as Holiday / Off';
             let holidayBtnClass = isHoliday ? 'btn-primary' : 'btn-warning';
             let dateDisplay = calculatedDate ? `📅 ${calculatedDate}` : '(Set Week Range to auto-date)';
 
@@ -361,7 +388,7 @@
                         ${isHoliday ? '<strong style="color:var(--danger); margin-left:12px;">[HOLIDAY / DAY OFF]</strong>' : ''}
                     </span>
                     <div class="day-actions">
-                        <button class="btn ${holidayBtnClass} holiday-toggle" style="padding:4px 10px; font-size:12px;" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>
+                        <button class="btn ${holidayBtnClass} holiday-toggle" style="padding:4px 10px; font-size:12px;" title="${holidayBtnTitleText}" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>
                         ${copyBtnHtml}
                         <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addTask('${day}')">＋ Add Task</button>
                     </div>
@@ -388,6 +415,20 @@
                             </td>
                             <td><button class="btn btn-danger" style="width:100%; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button></td>
                         </tr>`;
+                        if (t.status === 'blocked') {
+                            html += `<tr><td colspan="4" style="background:#1c1416; padding:8px 12px;">
+                                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                    <div style="flex:1; min-width:200px;">
+                                        <label style="display:block; font-size:11px; color:#f85149; font-weight:600; margin-bottom:4px;">🔒 Blocker reason</label>
+                                        <textarea rows="2" style="width:100%; box-sizing:border-box;" onchange="updateTask('${day}',${i},'blockerReason',this.value)" placeholder="e.g. Pending on API docs">${escapeHtml(t.blockerReason || '')}</textarea>
+                                    </div>
+                                    <div style="flex:1; min-width:200px;">
+                                        <label style="display:block; font-size:11px; color:#3fb950; font-weight:600; margin-bottom:4px;">🔑 How to unblock</label>
+                                        <textarea rows="2" style="width:100%; box-sizing:border-box;" onchange="updateTask('${day}',${i},'blockerUnblock',this.value)" placeholder="e.g. Follow up with platform team">${escapeHtml(t.blockerUnblock || '')}</textarea>
+                                    </div>
+                                </div>
+                            </td></tr>`;
+                        }
                     });
                 }
             } else {
@@ -412,6 +453,16 @@
                 <td><button class="btn btn-danger" style="width:100%; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button></td>
             </tr>`;
         });
+
+        const btbody = document.getElementById('blockers-tbody');
+        btbody.innerHTML = state.blockers.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No standalone blockers recorded.</td></tr>` : '';
+        state.blockers.forEach((b, i) => {
+            btbody.innerHTML += `<tr>
+                <td><textarea rows="1" onchange="updateBlocker(${i},'reason',this.value)" placeholder="e.g. Waiting on vendor SLA">${escapeHtml(b.reason)}</textarea></td>
+                <td><textarea rows="1" onchange="updateBlocker(${i},'unblock',this.value)" placeholder="e.g. Escalate to manager">${escapeHtml(b.unblock)}</textarea></td>
+                <td><button class="btn btn-danger" style="width:100%; padding:4px 8px; font-size:12px;" onclick="deleteBlocker(${i})">Delete</button></td>
+            </tr>`;
+        });
     }
 
     function copyUnfinishedSmart(currentDay) {
@@ -426,19 +477,23 @@
         if(!state.tasks[currentDay]) state.tasks[currentDay] = [];
         unfinished.forEach(t => {
             if(!state.tasks[currentDay].some(existTask => existTask.id === t.id)) {
-                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status });
+                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '' });
             }
         });
         saveState(); renderTracker();
     }
 
-    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress'}); saveState(); renderTracker(); }
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:''}); saveState(); renderTracker(); }
     function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
     function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
+    function updateAchievement(v) { state.achievement = v; saveState(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:''}); saveState(); renderTracker(); }
+    function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
+    function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
     function addPlanItem() { state.plans.push({text:'', priority:'High'}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
-    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
+    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
 
     function validateConfiguration() {
         const name = document.getElementById('cfg-name').value.trim();
@@ -523,10 +578,11 @@
                     const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
                     let dv = dateTag || d;
                     if (!taskMap.has(mapKey)) {
-                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, dates: [dv] });
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', dates: [dv] });
                     } else {
                         let existing = taskMap.get(mapKey);
                         existing.status = t.status; existing.title = t.title;
+                        existing.blockerReason = t.blockerReason || ''; existing.blockerUnblock = t.blockerUnblock || '';
                         if (!existing.dates.includes(dv)) existing.dates.push(dv);
                     }
                 });
@@ -535,7 +591,7 @@
         let doneTasks = [], progTasks = [], blockTasks = [];
         taskMap.forEach(t => {
             let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
-            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr };
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '' };
             if (t.status === 'done') doneTasks.push(compiled);
             else if (t.status === 'blocked') blockTasks.push(compiled);
             else if (t.status === 'progress') progTasks.push(compiled);
@@ -665,15 +721,35 @@
             `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
             buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
             `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:16px 20px;">`;
-        if (!blockTasks.length) {
+        const standaloneBlockers = (meta.showPlans ? (state.blockers || []) : []).filter(b => (b.reason || '').trim() || (b.unblock || '').trim());
+        if (!blockTasks.length && !standaloneBlockers.length) {
             out += `<div style="font-size:13px; color:#107c10; font-weight:500;">✓ No active blockers reported.</div>`;
         } else {
+            const blockerDetail = (reason, unblock) => {
+                let d = '';
+                if (reason && reason.trim()) d += `<div style="padding:4px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(reason.trim())}</div>`;
+                if (unblock && unblock.trim()) d += `<div style="padding:2px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(unblock.trim())}</div>`;
+                return d;
+            };
             blockTasks.forEach(t => {
                 out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
-                    `<td width="16" valign="middle" style="padding:0;">` +
+                    `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
                     `</td>` +
-                    `<td valign="middle" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span></td>` +
+                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span>` +
+                    blockerDetail(t.blockerReason, t.blockerUnblock) +
+                    `</td>` +
+                    `</tr></table>`;
+            });
+            standaloneBlockers.forEach(b => {
+                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                    `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;">` +
+                    (b.reason && b.reason.trim() ? `<strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(b.reason.trim())}` : '') +
+                    (b.unblock && b.unblock.trim() ? `<div style="padding:2px 0 0 0; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(b.unblock.trim())}</div>` : '') +
+                    `</td>` +
                     `</tr></table>`;
             });
         }
@@ -681,7 +757,18 @@
 
         out += spacer;
 
-        // 4. Next Week Plans (weekly only)
+        // 4. Achievement (weekly only)
+        if (meta.showPlans && state.achievement && state.achievement.trim()) {
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+            buildSectionHeader('#dff6dd', '#107c10', '★', 'Achievement') +
+            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px; font-size:13px; color:#1a1a1a; text-align:left; white-space:pre-wrap;">` +
+            escapeHtml(state.achievement.trim()) +
+            `</td></tr></table>`;
+        out += spacer;
+        }
+
+        // 5. Next Week Plans (weekly only)
         if (meta.showPlans) {
         out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
             `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
@@ -794,6 +881,11 @@
         const agg = aggregateTasks(snaps, true);
         assert(agg.doneTasks.length === 1 && agg.progTasks.length === 0, 'cross-week dedupe keeps latest status');
         assert(agg.doneTasks[0].dateTag.includes('-'), 'merged entry shows a date range');
+        // Blocked task carries reason/unblock through aggregation.
+        const bsnap = [{ week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'c', title: 'Deploy Y', desc: 'prod', status: 'blocked', blockerReason: 'Pending on API docs', blockerUnblock: 'Ping platform team' }] } }];
+        const bagg = aggregateTasks(bsnap, true);
+        assert(bagg.blockTasks.length === 1, 'blocked task aggregated');
+        assert(bagg.blockTasks[0].blockerReason === 'Pending on API docs' && bagg.blockTasks[0].blockerUnblock === 'Ping platform team', 'blocker reason/unblock carried through aggregation');
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
         const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
         const bundle = { version: 1, data: {} };
