@@ -3,6 +3,18 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-07-02
+
+### Added
+- **Report Builder — Achievement section**: a weekly free-text field to record what
+  you achieved; appears above "Next Week Plans" in the report (weekly scope).
+- **Report Builder — task blocker details**: setting a task's status to "! Blocker"
+  reveals inline **🔒 Blocker reason** and **🔑 How to unblock** fields, which render
+  under the task in the report's "Blockers & Risks" section.
+- **Report Builder — standalone blockers**: a "Blockers & Risks (not tied to a task)"
+  list (add/delete) for blockers unrelated to any task, each with reason + how to
+  unblock; rendered in the report's Blockers section (weekly scope).
+
 ## 2026-07-01
 
 ### Added
