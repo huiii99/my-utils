@@ -75,6 +75,14 @@
         .task-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
         .task-table input, .task-table textarea { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .task-table textarea { font-family: inherit; resize: vertical; field-sizing: content; min-height: 1.5em; overflow: hidden; }
+        /* Reference link toggle + input */
+        .link-toggle { height: 30px; width: 34px; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #6e7681; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        .link-toggle:hover { background: #1c2128; color: #c9d1d9; }
+        .link-toggle.on { background: #1f6feb33; border-color: #1f6feb66; color: #58a6ff; }
+        .link-row td { background: #11151c; }
+        .link-field { display: flex; align-items: center; gap: 8px; }
+        .link-field label { font-size: 11px; color: #58a6ff; font-weight: 600; white-space: nowrap; }
+        .action-cell-wrap { display: flex; gap: 6px; align-items: center; }
         
         /* Status Tags */
         .status-select { padding: 4px; border-radius: 4px; font-weight: 600; font-size: 12px; width: 100%; height: 30px; border: 1px solid var(--border); }
@@ -207,10 +215,11 @@
         if(localStorage.getItem('dd_state_save_v3')) {
             state = JSON.parse(localStorage.getItem('dd_state_save_v3'));
         } else {
-            state.tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '' });
+            state.tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
         }
         if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
         if(!state.blockers) state.blockers = [];
+        normalizeState(state);
         
         // Init week stepper: restore saved week or default to the current week.
         const savedWeek = localStorage.getItem('cfg-week');
@@ -331,8 +340,16 @@
     function emptyWeek() {
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
-        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '' });
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
         return { tasks, plans: [], holidays, achievement: '', blockers: [] };
+    }
+    // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
+    function normalizeState(s) {
+        if (!s) return s;
+        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = false; }); });
+        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = false; });
+        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = false; });
+        return s;
     }
     // Load the selected week's saved data into state (or an empty week), then render.
     function loadWeekIntoState(label) {
@@ -345,6 +362,7 @@
         } else {
             state = emptyWeek();
         }
+        normalizeState(state);
         localStorage.setItem('dd_state_save_v3', JSON.stringify(state));
         renderTracker();
     }
@@ -413,8 +431,21 @@
                                     <option value="blocked" ${t.status==='blocked'?'selected':''}>! Blocker</option>
                                 </select>
                             </td>
-                            <td><button class="btn btn-danger" style="width:100%; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button></td>
+                            <td>
+                                <div class="action-cell-wrap">
+                                    <button class="link-toggle ${t.linkOn?'on':''}" title="${t.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('task','${day}',${i})">🔗</button>
+                                    <button class="btn btn-danger" style="flex:1; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button>
+                                </div>
+                            </td>
                         </tr>`;
+                        if (t.linkOn) {
+                            html += `<tr class="link-row"><td colspan="4" style="padding:8px 12px;">
+                                <div class="link-field">
+                                    <label>🔗 Reference link</label>
+                                    <input type="url" onchange="updateTask('${day}',${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(t.link || '')}">
+                                </div>
+                            </td></tr>`;
+                        }
                         if (t.status === 'blocked') {
                             html += `<tr><td colspan="4" style="background:#1c1416; padding:8px 12px;">
                                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -450,8 +481,21 @@
                         <option value="Low" ${p.priority==='Low'?'selected':''}>🟢 Low</option>
                     </select>
                 </td>
-                <td><button class="btn btn-danger" style="width:100%; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button></td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="link-toggle ${p.linkOn?'on':''}" title="${p.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('plan',${i})">🔗</button>
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button>
+                    </div>
+                </td>
             </tr>`;
+            if (p.linkOn) {
+                tbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                    <div class="link-field">
+                        <label>🔗 Reference link</label>
+                        <input type="url" onchange="updatePlan(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(p.link || '')}">
+                    </div>
+                </td></tr>`;
+            }
         });
 
         const btbody = document.getElementById('blockers-tbody');
@@ -460,8 +504,21 @@
             btbody.innerHTML += `<tr>
                 <td><textarea rows="1" onchange="updateBlocker(${i},'reason',this.value)" placeholder="e.g. Waiting on vendor SLA">${escapeHtml(b.reason)}</textarea></td>
                 <td><textarea rows="1" onchange="updateBlocker(${i},'unblock',this.value)" placeholder="e.g. Escalate to manager">${escapeHtml(b.unblock)}</textarea></td>
-                <td><button class="btn btn-danger" style="width:100%; padding:4px 8px; font-size:12px;" onclick="deleteBlocker(${i})">Delete</button></td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="link-toggle ${b.linkOn?'on':''}" title="${b.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('blocker',${i})">🔗</button>
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteBlocker(${i})">Delete</button>
+                    </div>
+                </td>
             </tr>`;
+            if (b.linkOn) {
+                btbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                    <div class="link-field">
+                        <label>🔗 Reference link</label>
+                        <input type="url" onchange="updateBlocker(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(b.link || '')}">
+                    </div>
+                </td></tr>`;
+            }
         });
     }
 
@@ -477,22 +534,32 @@
         if(!state.tasks[currentDay]) state.tasks[currentDay] = [];
         unfinished.forEach(t => {
             if(!state.tasks[currentDay].some(existTask => existTask.id === t.id)) {
-                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '' });
+                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', linkOn: !!t.linkOn });
             }
         });
         saveState(); renderTracker();
     }
 
-    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:''}); saveState(); renderTracker(); }
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
     function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
     function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
     function updateAchievement(v) { state.achievement = v; saveState(); }
-    function addBlockerItem() { state.blockers.push({reason:'', unblock:''}); saveState(); renderTracker(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
     function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
     function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
-    function addPlanItem() { state.plans.push({text:'', priority:'High'}); saveState(); updatePlan(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
+    // Toggle whether an item uses a reference link. kind: 'task' (d,i), 'plan' (i), 'blocker' (i).
+    function toggleLink(kind, a, b) {
+        let item;
+        if (kind === 'task') item = state.tasks[a][b];
+        else if (kind === 'plan') item = state.plans[a];
+        else if (kind === 'blocker') item = state.blockers[a];
+        if (!item) return;
+        item.linkOn = !item.linkOn;
+        saveState(); renderTracker();
+    }
     function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
 
     function validateConfiguration() {
@@ -578,11 +645,12 @@
                     const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
                     let dv = dateTag || d;
                     if (!taskMap.has(mapKey)) {
-                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', dates: [dv] });
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', dates: [dv] });
                     } else {
                         let existing = taskMap.get(mapKey);
                         existing.status = t.status; existing.title = t.title;
                         existing.blockerReason = t.blockerReason || ''; existing.blockerUnblock = t.blockerUnblock || '';
+                        existing.link = (t.linkOn && t.link) ? t.link : existing.link;
                         if (!existing.dates.includes(dv)) existing.dates.push(dv);
                     }
                 });
@@ -591,7 +659,7 @@
         let doneTasks = [], progTasks = [], blockTasks = [];
         taskMap.forEach(t => {
             let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
-            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '' };
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '' };
             if (t.status === 'done') doneTasks.push(compiled);
             else if (t.status === 'blocked') blockTasks.push(compiled);
             else if (t.status === 'progress') progTasks.push(compiled);
@@ -635,6 +703,14 @@
                 `</tr></table>`;
         }
 
+        // Helper: build a small "🔗 ref" hyperlink for an item's reference URL (email-safe inline styles).
+        function refLink(url) {
+            if (!url || !url.trim()) return '';
+            let href = url.trim();
+            if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href)) href = 'https://' + href;
+            return ` <a href="${escapeHtml(href)}" target="_blank" style="font-size:11px; color:#0b5cad; text-decoration:none; margin-left:6px; white-space:nowrap;">🔗 ref</a>`;
+        }
+
         // Helper: build a task item row with icon + content + badge
         function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText) {
             return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom:1px solid #f3f4f6; font-family:'Segoe UI',-apple-system,sans-serif;">` +
@@ -643,7 +719,7 @@
                 `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="${iconBg}" style="background-color:${iconBg}; width:20px; height:20px; color:${iconColor}; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${icon}</td></tr></table>` +
                 `</td>` +
                 `<td valign="top" style="padding:12px 12px; text-align:left;">` +
-                `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}</div>` +
+                `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}${refLink(t.link)}</div>` +
                 `<div style="font-size:13px; color:#616161; margin-top:2px;">${escapeHtml(t.desc)}</div>` +
                 `<div style="font-size:11px; color:#9ca3af; margin-top:4px;">📅 ${escapeHtml(t.dateTag)}</div>` +
                 `</td>` +
@@ -736,7 +812,7 @@
                     `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
                     `</td>` +
-                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span>` +
+                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span>${refLink(t.link)}` +
                     blockerDetail(t.blockerReason, t.blockerUnblock) +
                     `</td>` +
                     `</tr></table>`;
@@ -747,7 +823,7 @@
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
                     `</td>` +
                     `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;">` +
-                    (b.reason && b.reason.trim() ? `<strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(b.reason.trim())}` : '') +
+                    (b.reason && b.reason.trim() ? `<strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(b.reason.trim())}${refLink(b.linkOn ? b.link : '')}` : '') +
                     (b.unblock && b.unblock.trim() ? `<div style="padding:2px 0 0 0; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(b.unblock.trim())}</div>` : '') +
                     `</td>` +
                     `</tr></table>`;
@@ -785,7 +861,7 @@
                     `<td width="32" valign="middle" style="padding:6px 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="#f0ebf8" style="background-color:#f0ebf8; width:20px; height:20px; color:#8764b8; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${idx+1}</td></tr></table>` +
                     `</td>` +
-                    `<td valign="middle" style="padding:6px 12px; font-size:13px; color:#1a1a1a; text-align:left;">${escapeHtml(p.text)}</td>` +
+                    `<td valign="middle" style="padding:6px 12px; font-size:13px; color:#1a1a1a; text-align:left;">${escapeHtml(p.text)}${refLink(p.linkOn ? p.link : '')}</td>` +
                     `<td width="60" valign="middle" style="padding:6px 0; text-align:right;">` +
                     `<table border="0" cellspacing="0" cellpadding="0" align="right"><tr><td bgcolor="${bg}" style="background-color:${bg}; padding:2px 6px; color:${fg}; font-size:11px; font-weight:600; border-radius:4px;">${p.priority}</td></tr></table>` +
                     `</td>` +
