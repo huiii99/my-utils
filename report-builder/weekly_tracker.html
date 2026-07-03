@@ -667,6 +667,39 @@
         return { doneTasks, progTasks, blockTasks };
     }
 
+    // Merge items sharing the same title (trimmed, case-insensitive) into one
+    // entry: keep the most recent description (tasks arrive chronologically, so
+    // later wins), preserve the first non-empty link, and union the date ranges.
+    // Blank-title items are left as separate entries.
+    function mergeByTitle(tasks) {
+        const groups = new Map();
+        const order = [];
+        const startOf = (s) => (s || '').split(' - ')[0].trim();
+        const endOf = (s) => { const p = (s || '').split(' - '); return p[p.length - 1].trim(); };
+        const unionDateTag = (a, b) => {
+            const s = startOf(a) || startOf(b);
+            const e = endOf(b) || endOf(a);
+            if (!s) return e;
+            if (!e || e === s) return s;
+            return `${s} - ${e}`;
+        };
+        tasks.forEach(t => {
+            const key = (t.title || '').trim().toLowerCase();
+            if (!key || !groups.has(key)) {
+                const g = { item: Object.assign({}, t) };
+                if (key) groups.set(key, g);
+                order.push(g);
+            } else {
+                const g = groups.get(key);
+                g.item.title = t.title;
+                g.item.desc = t.desc;
+                if (!g.item.link && t.link) g.item.link = t.link;
+                g.item.dateTag = unionDateTag(g.item.dateTag, t.dateTag);
+            }
+        });
+        return order.map(g => g.item);
+    }
+
     // Title / badge / footer / plans-visibility for each scope.
     function reportMeta(scope, currentWeek) {
         const d = weekMonday(currentWeek);
@@ -690,6 +723,7 @@
         const meta = reportMeta(scope, config.week);
         const snapshots = collectSnapshots(scope, config.week);
         const { doneTasks, progTasks, blockTasks } = aggregateTasks(snapshots, scope !== 'weekly');
+        const mergedProgTasks = mergeByTitle(progTasks);
 
         // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
         // Helper: build a section header row with icon + title
@@ -784,7 +818,7 @@
         if (!progTasks.length) {
             out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding:16px 20px; color:#616161; font-size:13px;">No active tasks in progress.</td></tr></table>`;
         } else {
-            progTasks.forEach(t => {
+            mergedProgTasks.forEach(t => {
                 out += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
             });
         }
