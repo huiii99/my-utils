@@ -178,6 +178,19 @@
             <tbody id="plans-tbody"></tbody>
         </table>
     </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #58a6ff;">📝 Notes</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addNoteItem()">＋ Add Note</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 90%;">Note (e.g. out of office, non-project remarks)</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="notes-tbody"></tbody>
+        </table>
+    </div>
 </div>
 
 <div class="modal-overlay" id="reviewModal">
@@ -206,6 +219,7 @@
         plans: [],
         achievement: '',
         blockers: [],
+        notes: [],
         holidays: { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false }
     };
 
@@ -219,6 +233,7 @@
         }
         if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
         if(!state.blockers) state.blockers = [];
+        if(!state.notes) state.notes = [];
         normalizeState(state);
         
         // Init week stepper: restore saved week or default to the current week.
@@ -242,7 +257,7 @@
         const wk = (document.getElementById('cfg-week') || {}).value;
         if (wk) {
             const hist = loadHistory();
-            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans, achievement: state.achievement, blockers: state.blockers };
+            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans, achievement: state.achievement, blockers: state.blockers, notes: state.notes };
             localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
         }
     }
@@ -341,7 +356,7 @@
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
         tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
-        return { tasks, plans: [], holidays, achievement: '', blockers: [] };
+        return { tasks, plans: [], holidays, achievement: '', blockers: [], notes: [] };
     }
     // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
     function normalizeState(s) {
@@ -358,7 +373,7 @@
             const h = JSON.parse(JSON.stringify(hist[label]));
             const tasks = {}, holidays = {};
             DAYS.forEach(d => { tasks[d] = (h.tasks && h.tasks[d]) || []; holidays[d] = !!(h.holidays && h.holidays[d]); });
-            state = { tasks, plans: h.plans || [], holidays, achievement: h.achievement || '', blockers: h.blockers || [] };
+            state = { tasks, plans: h.plans || [], holidays, achievement: h.achievement || '', blockers: h.blockers || [], notes: h.notes || [] };
         } else {
             state = emptyWeek();
         }
@@ -520,6 +535,19 @@
                 </td></tr>`;
             }
         });
+
+        const ntbody = document.getElementById('notes-tbody');
+        ntbody.innerHTML = state.notes.length === 0 ? `<tr><td colspan="2" style="color:#9ca3af; text-align:center; padding:12px;">No notes recorded.</td></tr>` : '';
+        state.notes.forEach((n, i) => {
+            ntbody.innerHTML += `<tr>
+                <td><input type="text" value="${escapeHtml(n.text || '')}" onchange="updateNote(${i},this.value)" placeholder="e.g. I will be off next week"></td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteNote(${i})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+        });
     }
 
     function copyUnfinishedSmart(currentDay) {
@@ -550,6 +578,9 @@
     function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
+    function addNoteItem() { state.notes.push({text:''}); saveState(); renderTracker(); }
+    function updateNote(i, v) { state.notes[i].text = v; saveState(); }
+    function deleteNote(i) { state.notes.splice(i, 1); saveState(); renderTracker(); }
     // Toggle whether an item uses a reference link. kind: 'task' (d,i), 'plan' (i), 'blocker' (i).
     function toggleLink(kind, a, b) {
         let item;
@@ -560,7 +591,7 @@
         item.linkOn = !item.linkOn;
         saveState(); renderTracker();
     }
-    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
+    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.notes=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
 
     function validateConfiguration() {
         const name = document.getElementById('cfg-name').value.trim();
@@ -903,6 +934,23 @@
             });
         }
         out += `</td></tr></table>`;
+        }
+
+        // 6. Notes (weekly only) — omitted when there are no non-empty notes
+        const notesList = meta.showPlans ? (state.notes || []).filter(n => (n.text || '').trim()) : [];
+        if (notesList.length) {
+            out += spacer;
+            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#eaeef2', '#3b4a57', 'i', 'Notes') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
+            notesList.forEach(n => {
+                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                    `<td width="20" valign="top" style="padding:6px 0; font-size:13px; color:#3b4a57; line-height:1.5;">&bull;</td>` +
+                    `<td valign="top" style="padding:6px 8px; font-size:13px; color:#1a1a1a; text-align:left; line-height:1.5;">${escapeHtml(n.text.trim())}</td>` +
+                    `</tr></table>`;
+            });
+            out += `</td></tr></table>`;
         }
 
         // Footer
