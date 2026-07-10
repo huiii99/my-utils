@@ -825,47 +825,44 @@
 
         out += spacerLg;
 
-        // 1. Completed Tasks
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
-            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
-            buildSectionHeader('#dff6dd', '#107c10', '✓', 'Completed Tasks') +
-            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
-        if (!doneTasks.length) {
-            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding:16px 20px; color:#616161; font-size:13px;">No tasks completed this week.</td></tr></table>`;
-        } else {
-            doneTasks.forEach(t => {
-                out += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
-            });
-        }
-        out += `</td></tr></table>`;
+        // Each section builds its own HTML and is only added when it has content.
+        // Empty sections are hidden entirely; if nothing has content a single
+        // fallback message is shown instead.
+        const sections = [];
 
-        out += spacer;
+        // 1. Completed Tasks
+        if (doneTasks.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#dff6dd', '#107c10', '✓', 'Completed Tasks') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+            doneTasks.forEach(t => {
+                s += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
 
         // 2. In Progress
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
-            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
-            buildSectionHeader('#deecf9', '#0078d4', '↻', 'In Progress') +
-            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
-        if (!progTasks.length) {
-            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding:16px 20px; color:#616161; font-size:13px;">No active tasks in progress.</td></tr></table>`;
-        } else {
+        if (mergedProgTasks.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#deecf9', '#0078d4', '↻', 'In Progress') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
             mergedProgTasks.forEach(t => {
-                out += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
+                s += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
             });
+            s += `</td></tr></table>`;
+            sections.push(s);
         }
-        out += `</td></tr></table>`;
-
-        out += spacer;
 
         // 3. Blockers
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
-            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
-            buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
-            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:16px 20px;">`;
         const standaloneBlockers = (meta.showPlans ? (state.blockers || []) : []).filter(b => (b.reason || '').trim() || (b.unblock || '').trim());
-        if (!blockTasks.length && !standaloneBlockers.length) {
-            out += `<div style="font-size:13px; color:#107c10; font-weight:500;">✓ No active blockers reported.</div>`;
-        } else {
+        if (blockTasks.length || standaloneBlockers.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:16px 20px;">`;
             const blockerDetail = (reason, unblock) => {
                 let d = '';
                 if (reason && reason.trim()) d += `<div style="padding:4px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(reason.trim())}</div>`;
@@ -873,7 +870,7 @@
                 return d;
             };
             blockTasks.forEach(t => {
-                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
                     `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
                     `</td>` +
@@ -883,7 +880,7 @@
                     `</tr></table>`;
             });
             standaloneBlockers.forEach(b => {
-                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
                     `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
                     `</td>` +
@@ -893,36 +890,32 @@
                     `</td>` +
                     `</tr></table>`;
             });
+            s += `</td></tr></table>`;
+            sections.push(s);
         }
-        out += `</td></tr></table>`;
-
-        out += spacer;
 
         // 4. Achievement (weekly only)
         if (meta.showPlans && state.achievement && state.achievement.trim()) {
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
-            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
-            buildSectionHeader('#dff6dd', '#107c10', '★', 'Achievement') +
-            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px; font-size:13px; color:#1a1a1a; text-align:left; white-space:pre-wrap;">` +
-            escapeHtml(state.achievement.trim()) +
-            `</td></tr></table>`;
-        out += spacer;
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#dff6dd', '#107c10', '★', 'Achievement') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px; font-size:13px; color:#1a1a1a; text-align:left; white-space:pre-wrap;">` +
+                escapeHtml(state.achievement.trim()) +
+                `</td></tr></table>`;
+            sections.push(s);
         }
 
         // 5. Next Week Plans (weekly only)
-        if (meta.showPlans) {
-        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
-            `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
-            buildSectionHeader('#f0ebf8', '#8764b8', '→', 'Next Week Plans') +
-            `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
-        if (!state.plans.length) {
-            out += `<div style="color:#616161; font-size:13px;">No plans listed for next week.</div>`;
-        } else {
-            state.plans.forEach((p, idx) => {
-                if (!p.text.trim()) return;
+        const planItems = meta.showPlans ? (state.plans || []).filter(p => (p.text || '').trim()) : [];
+        if (planItems.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#f0ebf8', '#8764b8', '→', 'Next Week Plans') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
+            planItems.forEach((p, idx) => {
                 let bg = p.priority === 'High' ? '#fed9cc' : p.priority === 'Low' ? '#dff6dd' : '#fff4ce';
                 let fg = p.priority === 'High' ? '#d13438' : p.priority === 'Low' ? '#107c10' : '#ff8c00';
-                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
                     `<td width="32" valign="middle" style="padding:6px 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="#f0ebf8" style="background-color:#f0ebf8; width:20px; height:20px; color:#8764b8; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${idx+1}</td></tr></table>` +
                     `</td>` +
@@ -932,26 +925,38 @@
                     `</td>` +
                     `</tr></table>`;
             });
-        }
-        out += `</td></tr></table>`;
+            s += `</td></tr></table>`;
+            sections.push(s);
         }
 
         // 6. Notes (weekly only) — omitted when there are no non-empty notes
         const notesList = meta.showPlans ? (state.notes || []).filter(n => (n.text || '').trim()) : [];
         if (notesList.length) {
-            out += spacer;
-            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#eaeef2', '#3b4a57', 'i', 'Notes') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
             notesList.forEach(n => {
-                out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
                     `<td width="20" valign="top" style="padding:6px 0; font-size:13px; color:#3b4a57; line-height:1.5;">&bull;</td>` +
                     `<td valign="top" style="padding:6px 8px; font-size:13px; color:#1a1a1a; text-align:left; line-height:1.5;">${escapeHtml(n.text.trim())}</td>` +
                     `</tr></table>`;
             });
-            out += `</td></tr></table>`;
+            s += `</td></tr></table>`;
+            sections.push(s);
         }
+
+        if (sections.length) {
+            out += sections.join(spacer);
+        } else {
+            // No section has any content — show a single meaningful message.
+            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:36px 20px; text-align:center; color:#616161; font-size:14px; line-height:1.6;">` +
+                `📭 <strong style="color:#1a1a1a;">Nothing to report for this period.</strong><br>No completed tasks, work in progress, blockers, or plans were logged.` +
+                `</td></tr></table>`;
+        }
+
+        out += spacer;
 
         // Footer
         out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:15px; font-size:11px; color:#9ca3af; font-family:'Segoe UI',sans-serif;">DDAzure ${escapeHtml(meta.title)} | ${escapeHtml(meta.badge)}</td></tr></table>`;
