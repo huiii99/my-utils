@@ -267,10 +267,23 @@
     function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch(e) { return {}; } }
     // Keys that make up a complete backup: current buffer, week history, config fields.
     const BACKUP_KEYS = ['dd_state_save_v3', HISTORY_KEY, 'cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'];
-    function exportBackup() {
+    // These keys hold JSON in localStorage; backups store them as real nested
+    // objects (not escaped strings) so the exported file is human-readable.
+    const JSON_BACKUP_KEYS = ['dd_state_save_v3', HISTORY_KEY];
+    function buildBackupBundle() {
         const data = {};
-        BACKUP_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) data[k] = v; });
-        const bundle = { version: 1, exportedAt: new Date().toISOString(), data };
+        BACKUP_KEYS.forEach(k => {
+            const v = localStorage.getItem(k);
+            if (v === null) return;
+            if (JSON_BACKUP_KEYS.includes(k)) {
+                try { data[k] = JSON.parse(v); return; } catch (e) { /* fall back to raw string */ }
+            }
+            data[k] = v;
+        });
+        return { version: 2, exportedAt: new Date().toISOString(), data };
+    }
+    function exportBackup() {
+        const bundle = buildBackupBundle();
         const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -284,8 +297,13 @@
             throw new Error('not a Work Tracker backup');
         }
         BACKUP_KEYS.forEach(k => {
-            if (k in bundle.data) localStorage.setItem(k, bundle.data[k]);
-            else localStorage.removeItem(k);
+            if (k in bundle.data) {
+                const v = bundle.data[k];
+                // v2 backups store JSON keys as objects; v1 stored them as strings.
+                localStorage.setItem(k, (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+            } else {
+                localStorage.removeItem(k);
+            }
         });
     }
     function importBackup(input) {
@@ -1053,11 +1071,25 @@
         assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
         const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
-        const bundle = { version: 1, data: {} };
-        BACKUP_KEYS.forEach(k => { if (before[k] !== null) bundle.data[k] = before[k]; });
-        bundle.data['dd_state_save_v3'] = bundle.data['dd_state_save_v3'] || '{}';
+        // v2 form: JSON keys stored as objects.
+        const bundle = { version: 2, data: {} };
+        BACKUP_KEYS.forEach(k => {
+            if (before[k] === null) return;
+            if (JSON_BACKUP_KEYS.includes(k)) { try { bundle.data[k] = JSON.parse(before[k]); return; } catch (e) {} }
+            bundle.data[k] = before[k];
+        });
+        if (!('dd_state_save_v3' in bundle.data)) bundle.data['dd_state_save_v3'] = {};
         applyBackup(bundle);
-        assert(localStorage.getItem('dd_state_save_v3') === bundle.data['dd_state_save_v3'], 'backup restores state key');
+        assert(localStorage.getItem('dd_state_save_v3') === JSON.stringify(bundle.data['dd_state_save_v3']), 'v2 backup restores state key as stringified JSON');
+        // v1 backward compatibility: string values still restore verbatim.
+        applyBackup({ version: 1, data: { 'dd_state_save_v3': '{"tasks":{}}' } });
+        assert(localStorage.getItem('dd_state_save_v3') === '{"tasks":{}}', 'v1 string backup still restores');
+        // v1 -> v2 conversion: importing an old backup then exporting yields v2 nested objects.
+        applyBackup({ version: 1, data: { 'dd_state_save_v3': '{"tasks":{"Monday":[]}}', 'dd_week_history_v1': '{}' } });
+        const upgraded = buildBackupBundle();
+        assert(upgraded.version === 2, 'buildBackupBundle emits version 2');
+        assert(upgraded.data['dd_state_save_v3'] && typeof upgraded.data['dd_state_save_v3'] === 'object', 'v1 state string converts to nested object on export');
+        assert(typeof upgraded.data['dd_week_history_v1'] === 'object', 'v1 history string converts to nested object on export');
         BACKUP_KEYS.forEach(k => { if (before[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, before[k]); });
         console.log('SELFTEST PASS');
     }
