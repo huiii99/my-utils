@@ -608,13 +608,14 @@
     function copySubject() {
         const name = document.getElementById('cfg-name').value.trim();
         const week = document.getElementById('cfg-week').value.trim();
-        if (!name || !week) {
-            alert("❌ Please fill in Name and Week Range in the configuration first.");
+        const dept = document.getElementById('cfg-dept').value.trim();
+        if (!name || !week || !dept) {
+            alert("❌ Please fill in Name, Department, and Week Range in the configuration first.");
             return;
         }
         const scope = (document.getElementById('report-scope') || {}).value || 'weekly';
         const meta = reportMeta(scope, week);
-        const subject = `${meta.badge} - ${name}'s ${meta.title}`;
+        const subject = `[${dept}] ${meta.title} [${meta.badge.replace(/^Week of /, '')}] - ${name}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(subject).then(() => {
                 flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
