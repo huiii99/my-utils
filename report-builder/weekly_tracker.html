@@ -743,6 +743,8 @@
                 g.item.title = t.title;
                 g.item.desc = t.desc;
                 if (!g.item.link && t.link) g.item.link = t.link;
+                if (t.blockerReason && t.blockerReason.trim()) g.item.blockerReason = t.blockerReason;
+                if (t.blockerUnblock && t.blockerUnblock.trim()) g.item.blockerUnblock = t.blockerUnblock;
                 g.item.dateTag = unionDateTag(g.item.dateTag, t.dateTag);
             }
         });
@@ -772,7 +774,9 @@
         const meta = reportMeta(scope, config.week);
         const snapshots = collectSnapshots(scope, config.week);
         const { doneTasks, progTasks, blockTasks } = aggregateTasks(snapshots, scope !== 'weekly');
+        const mergedDoneTasks = mergeByTitle(doneTasks);
         const mergedProgTasks = mergeByTitle(progTasks);
+        const mergedBlockTasks = mergeByTitle(blockTasks);
 
         // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
         // Helper: build a section header row with icon + title
@@ -849,12 +853,12 @@
         const sections = [];
 
         // 1. Completed Tasks
-        if (doneTasks.length) {
+        if (mergedDoneTasks.length) {
             let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#dff6dd', '#107c10', '✓', 'Completed Tasks') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
-            doneTasks.forEach(t => {
+            mergedDoneTasks.forEach(t => {
                 s += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
             });
             s += `</td></tr></table>`;
@@ -876,7 +880,7 @@
 
         // 3. Blockers
         const standaloneBlockers = (meta.showPlans ? (state.blockers || []) : []).filter(b => (b.reason || '').trim() || (b.unblock || '').trim());
-        if (blockTasks.length || standaloneBlockers.length) {
+        if (mergedBlockTasks.length || standaloneBlockers.length) {
             let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
@@ -887,7 +891,7 @@
                 if (unblock && unblock.trim()) d += `<div style="padding:2px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(unblock.trim())}</div>`;
                 return d;
             };
-            blockTasks.forEach(t => {
+            mergedBlockTasks.forEach(t => {
                 s += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
                     `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
                     `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
@@ -1067,6 +1071,20 @@
         const bagg = aggregateTasks(bsnap, true);
         assert(bagg.blockTasks.length === 1, 'blocked task aggregated');
         assert(bagg.blockTasks[0].blockerReason === 'Pending on API docs' && bagg.blockTasks[0].blockerUnblock === 'Ping platform team', 'blocker reason/unblock carried through aggregation');
+        // Weekly scope (keyByTitle=false): same title logged on two days => two raw
+        // entries that mergeByTitle collapses to one ranged entry, for every section.
+        const dupWeek = [{ week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: {
+            Monday: [{ id: 'd1', title: 'Fix login', desc: 'auth', status: 'done' }, { id: 'k1', title: 'DB down', desc: 'prod', status: 'blocked', blockerReason: '', blockerUnblock: '' }],
+            Tuesday: [{ id: 'd2', title: 'Fix login', desc: 'auth', status: 'done' }, { id: 'k2', title: 'DB down', desc: 'prod', status: 'blocked', blockerReason: 'DBA offline', blockerUnblock: 'Escalate' }]
+        } }];
+        const dupAgg = aggregateTasks(dupWeek, false);
+        assert(dupAgg.doneTasks.length === 2 && dupAgg.blockTasks.length === 2, 'weekly scope yields raw duplicates before merge');
+        const mDone = mergeByTitle(dupAgg.doneTasks);
+        assert(mDone.length === 1, 'duplicate completed tasks merge to one');
+        assert(mDone[0].dateTag.includes('-'), 'merged completed task shows a date range');
+        const mBlock = mergeByTitle(dupAgg.blockTasks);
+        assert(mBlock.length === 1, 'duplicate blocked tasks merge to one');
+        assert(mBlock[0].blockerReason === 'DBA offline' && mBlock[0].blockerUnblock === 'Escalate', 'merge keeps latest non-empty blocker reason/resolution');
         // Weekday date tags roll over month boundaries.
         assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
