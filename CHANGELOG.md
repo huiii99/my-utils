@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## 2026-08-20
+
+### Added
+- **Weekly Work Tracker v2**: a separate tracker that logs tasks in one
+  selectable week-range card instead of Monday-Friday cards.
+- **Weekly Work Report**: report generation uses the full week range for weekly
+  tracker task dates and keeps its data separate from the daily tracker.
+
 ## 2026-07-02
 
 ### Added
