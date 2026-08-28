@@ -1,10 +1,12 @@
 # 📅 Work Tracker & Report Builder
 
-A work tracker that lets you log daily tasks and generate a formatted **weekly, monthly** report ready to paste into an email.
+A pair of work trackers that generate formatted reports ready to paste into an email.
 
 ## Features
 
 - Configure your name, email, department, and week range
+- Choose the **Daily Work Tracker** to split tasks across Monday–Friday
+- Choose the **Weekly Work Tracker** to log tasks in one selectable-week card labeled with the full week range
 - Log tasks per day (Monday–Friday) with description and status (Done / In Progress / Blocked)
   - Setting a task to **Blocked** reveals inline fields to record the blocker reason and how to unblock it, which appear in the report's "Blockers & Risks" section
 - Log standalone **Blockers & Risks** not tied to any task (reason + how to unblock)
@@ -15,6 +17,7 @@ A work tracker that lets you log daily tasks and generate a formatted **weekly, 
   - **Weekly** — the current week's tasks plus a "Next Week Plans" section
   - **Monthly** — rolls up every saved week in the current month; recurring tasks are merged into a date range
 - Each week you fill in is snapshotted to `localStorage`, building the history that monthly reports aggregate from
+- Weekly tracker data is stored separately from daily tracker data, and its generated report uses the full week range for each task
 - Data persists in `localStorage` across sessions
 - **Backup / Restore** — since data lives in browser `localStorage` (lost if you clear cache), use **⬇ Backup** to download a `.json` snapshot of everything (tasks, week history, and config), and **⬆ Restore** to load it back on any browser/machine
 
@@ -24,4 +27,10 @@ Open `weekly_tracker.html` in your browser:
 
 ```
 start weekly_tracker.html
+```
+
+Or open the weekly-only tracker:
+
+```
+start weekly_tracker_v2.html
 ```

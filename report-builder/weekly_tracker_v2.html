@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Tracker & Report Builder</title>
+    <style>
+        :root {
+            --ms-blue: #58a6ff;
+            --ms-dark: #1f6feb;
+            --bg-gray: #0d1117;
+            --border: #30363d;
+            --danger: #f85149;
+            --holiday-bg: #1c1214;
+            --holiday-border: #f8514966;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', -apple-system, sans-serif; }
+        body { background: var(--bg-gray); padding: 20px; color: #c9d1d9; font-size: 14px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #161b22; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        
+        /* Config */
+        .config-section { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+        .config-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+        .config-grid .form-group { grid-column: span 3; }
+        @media (max-width: 720px) { .config-grid .form-group { grid-column: span 12 !important; } }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: #8b949e; margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
+        .required-dot::after { content: " *"; color: var(--danger); }
+        
+        /* Layout Buttons */
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--ms-blue); color: #0d1117; }
+        .btn-primary:hover { background: var(--ms-dark); color: #fff; }
+        .btn-secondary { background: #30363d; color: #c9d1d9; border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #484f58; }
+        .btn-success { background: #238636; color: white; padding: 10px 20px; font-size: 14px; }
+        .btn-success:hover { background: #2ea043; }
+        .btn-danger { background: #da363433; color: var(--danger); border: 1px solid #f8514966; }
+        .btn-danger:hover { background: #da363466; color: #ff7b72; }
+        .btn-warning { background: #bb800926; color: #d29922; border: 1px solid #d2992266; }
+        .btn-warning:hover { background: #bb800959; color: #e3b341; }
+
+        /* Settings gear menu (native <details>) */
+        .settings-menu { position: relative; }
+        .settings-menu > summary { list-style: none; padding: 8px 12px; cursor: pointer; user-select: none; }
+        .settings-menu > summary::-webkit-details-marker { display: none; }
+        .settings-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; background: #1c2128; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 6px; min-width: 190px; display: flex; flex-direction: column; gap: 2px; }
+        .settings-item { text-align: left; padding: 8px 12px; border: none; border-radius: 6px; background: transparent; color: #c9d1d9; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .settings-item:hover { background: #30363d; }
+        .settings-item.danger { color: var(--danger); }
+        .settings-item.danger:hover { background: #da363433; color: #ff7b72; }
+
+        /* Week range stepper */
+        .week-stepper { display: flex; align-items: center; gap: 6px; background: #0d1117; border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; }
+        .week-nav { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px; background: #1c2128; color: var(--ms-blue); font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0; box-sizing: border-box; }
+        .week-nav:hover { background: #30363d; color: #fff; }
+        .week-label { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .week-today { height: 28px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 4px; background: #1c2128; color: #8b949e; font-size: 11px; font-weight: 600; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+        .week-today:hover { background: #30363d; color: #c9d1d9; }
+
+        /* Day Cards */
+        .day-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: 0.3s; background: #161b22; }
+        .day-card.is-holiday { background: var(--holiday-bg); border-color: var(--holiday-border); }
+        .day-card.is-holiday .task-table, .day-card.is-holiday .btn-primary:not(.holiday-toggle) { display: none; }
+        .day-header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .day-title { font-weight: 600; font-size: 14px; color: var(--ms-blue); }
+        .day-actions { display: flex; gap: 8px; align-items: center; }
+        
+        /* Tables */
+        .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .task-table th { background: #1c2128; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: #8b949e; font-weight: 600; }
+        .task-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
+        .task-table input, .task-table textarea { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
+        .task-table textarea { font-family: inherit; resize: vertical; field-sizing: content; min-height: 1.5em; overflow: hidden; }
+        /* Reference link toggle + input */
+        .link-toggle { height: 30px; width: 34px; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #6e7681; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        .link-toggle:hover { background: #1c2128; color: #c9d1d9; }
+        .link-toggle.on { background: #1f6feb33; border-color: #1f6feb66; color: #58a6ff; }
+        .link-row td { background: #11151c; }
+        .link-field { display: flex; align-items: center; gap: 8px; }
+        .link-field label { font-size: 11px; color: #58a6ff; font-weight: 600; white-space: nowrap; }
+        .action-cell-wrap { display: flex; gap: 6px; align-items: center; }
+        
+        /* Status Tags */
+        .status-select { padding: 4px; border-radius: 4px; font-weight: 600; font-size: 12px; width: 100%; height: 30px; border: 1px solid var(--border); }
+        .status-done { background: #23863633; color: #3fb950; }
+        .status-progress { background: #1f6feb33; color: #58a6ff; }
+        .status-blocked { background: #da363433; color: #f85149; }
+
+        /* Modal Overlay for Review */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #161b22; width: 95%; height: 90%; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-header { background: #1c2128; padding: 15px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { flex: 1; display: flex; overflow: hidden; padding: 15px; gap: 15px; }
+        .preview-pane { flex: 2; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; overflow-y: auto; padding: 15px; }
+        .code-pane { flex: 1; background: #0d1117; border-radius: 6px; display: flex; flex-direction: column; padding: 10px; }
+        .code-textarea { flex: 1; width: 100%; background: #0d1117; color: #d4d4d4; font-family: 'Consolas', monospace; font-size: 12px; border: none; resize: none; outline: none; padding: 10px; line-height: 1.5; }
+        .copied { background: #238636 !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="config-section">
+        <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">👤 User Configuration (Required)</div>
+        <div class="config-grid">
+            <div class="form-group"><label class="required-dot">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
+            <div class="form-group"><label class="required-dot">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
+            <div class="form-group fg-dept"><label class="required-dot">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
+            <div class="form-group fg-week"><label class="required-dot">Week Range</label>
+                <div class="week-stepper">
+                    <button type="button" class="week-nav" onclick="stepWeek(-1)" title="Previous week">‹</button>
+                    <span id="cfg-week-label" class="week-label">—</span>
+                    <button type="button" class="week-nav" onclick="stepWeek(1)" title="Next week">›</button>
+                    <button type="button" class="week-today" onclick="goCurrentWeek()" title="Jump to current week">Today</button>
+                    <input type="hidden" id="cfg-week">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <h2 id="tracker-title">📅 Daily Work Tracker</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <details class="settings-menu">
+                <summary class="btn btn-secondary" title="Settings">⚙️</summary>
+                <div class="settings-panel">
+                    <button class="settings-item" onclick="exportBackup(); this.closest('details').open=false">⬇ Backup data</button>
+                    <button class="settings-item" onclick="document.getElementById('import-file').click(); this.closest('details').open=false">⬆ Restore data</button>
+                    <button class="settings-item danger" onclick="clearAllData(); this.closest('details').open=false">🗑 Clear all records</button>
+                </div>
+            </details>
+            <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
+            <select id="report-scope" style="padding:8px; border:1px solid var(--border); border-radius:4px; font-size:13px; background:#0d1117; color:#c9d1d9; margin-right:6px;">
+                <option value="weekly">Weekly Report</option>
+                <option value="monthly">Monthly Report</option>
+                <!-- ponytail: quarterly hidden for now; logic stays, re-add option to enable -->
+                <!-- <option value="quarterly">Quarterly Review</option> -->
+            </select>
+            <button class="btn btn-success" onclick="openReviewModal()">⚡ Generate Report</button>
+        </div>
+    </div>
+
+    <div id="days-container"></div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #f85149;">🚧 Blockers &amp; Risks (not tied to a task)</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addBlockerItem()">＋ Add Blocker</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 45%;">🔒 Blocker reason</th><th style="width: 45%;">🔑 How to unblock</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="blockers-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #107c10;">🏆 Achievement</h3>
+        </div>
+        <textarea id="achievement-input" placeholder="What did you achieve this week?" style="width:100%; min-height:70px; box-sizing:border-box; padding:8px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; font-family:inherit; font-size:13px; resize:vertical;" oninput="updateAchievement(this.value)"></textarea>
+    </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #8764b8;">🚀 Next Week Plans</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addPlanItem()">＋ Add Plan</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 70%;">Plan Description</th><th style="width: 20%;">Priority</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="plans-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="day-card" style="padding:16px; background:#1c2128; margin-top:24px;">
+        <div class="action-bar" style="margin-bottom:12px;">
+            <h3 style="font-size:15px; color: #58a6ff;">📝 Notes</h3>
+            <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addNoteItem()">＋ Add Note</button>
+        </div>
+        <table class="task-table">
+            <thead>
+                <tr><th style="width: 90%;">Note (e.g. out of office, non-project remarks)</th><th style="width: 10%;">Action</th></tr>
+            </thead>
+            <tbody id="notes-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="reviewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:600; color:var(--ms-dark);">🔍 Review & Export Report</h3>
+            <div>
+                <button class="btn btn-primary" id="copySubjectBtn" style="margin-right:8px;" onclick="copySubject()">📌 Copy Subject</button>
+                <button class="btn btn-success" id="copyBodyBtn" style="margin-right:8px;" onclick="copyFormattedBody()">📋 Copy Formatted Body</button>
+                <button class="btn btn-secondary" onclick="closeReviewModal()">Close</button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="preview-pane" id="htmlPreview"></div>
+            <div class="code-pane" style="display: none;">
+                <textarea id="codeOutput" readonly></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const IS_WEEKLY_TRACKER = true;
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const TRACKER_PERIODS = IS_WEEKLY_TRACKER ? ['Monday'] : DAYS;
+    const STATE_KEY = IS_WEEKLY_TRACKER ? 'weekly_state_save_v1' : 'dd_state_save_v3';
+    const HISTORY_KEY = IS_WEEKLY_TRACKER ? 'weekly_history_v1' : 'dd_week_history_v1';
+    const WEEK_CONFIG_KEY = IS_WEEKLY_TRACKER ? 'weekly-cfg-week' : 'cfg-week';
+    let state = { 
+        tasks: { 'Monday': [], 'Tuesday': [], 'Wednesday': [], 'Thursday': [], 'Friday': [] }, 
+        plans: [],
+        achievement: '',
+        blockers: [],
+        notes: [],
+        holidays: { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false }
+    };
+
+    function generateId() { return '_' + Math.random().toString(36).substr(2, 9); }
+
+    window.onload = function() {
+        document.title = IS_WEEKLY_TRACKER ? 'Weekly Work Tracker & Report Builder' : 'Daily Work Tracker & Report Builder';
+        document.getElementById('tracker-title').textContent = IS_WEEKLY_TRACKER ? '📅 Weekly Work Tracker' : '📅 Daily Work Tracker';
+        if (IS_WEEKLY_TRACKER) {
+            document.getElementById('report-scope').style.display = 'none';
+        }
+
+        const currentMonday = mondayOf(new Date());
+        const savedWeekLabel = localStorage.getItem(WEEK_CONFIG_KEY);
+        if(localStorage.getItem(STATE_KEY)) {
+            state = JSON.parse(localStorage.getItem(STATE_KEY));
+        } else {
+            state = emptyWeek();
+        }
+        if(!state.holidays) state.holidays = { 'Monday': false, 'Tuesday': false, 'Wednesday': false, 'Thursday': false, 'Friday': false };
+        if(!state.blockers) state.blockers = [];
+        if(!state.notes) state.notes = [];
+        normalizeState(state);
+        
+        // Init week stepper: restore saved week or default to the current week.
+        const savedWeek = savedWeekLabel;
+        setWeek((savedWeek && weekMonday(savedWeek)) || currentMonday, true);
+
+        ['cfg-name', 'cfg-email', 'cfg-dept'].forEach(id => {
+            if(localStorage.getItem(id)) document.getElementById(id).value = localStorage.getItem(id);
+            document.getElementById(id).addEventListener('input', () => {
+                localStorage.setItem(id, document.getElementById(id).value);
+            });
+        });
+        document.getElementById('cfg-week').addEventListener('change', () => loadWeekIntoState(document.getElementById('cfg-week').value));
+        // Seed history with the existing single-week save so rollups have data.
+        if (Object.keys(loadHistory()).length === 0) saveState();
+        renderTracker();
+    };
+
+    function saveState() {
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+        const wk = (document.getElementById('cfg-week') || {}).value;
+        if (wk) {
+            const hist = loadHistory();
+            hist[wk] = { tasks: state.tasks, holidays: state.holidays, plans: state.plans, achievement: state.achievement, blockers: state.blockers, notes: state.notes };
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+        }
+    }
+    const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch(e) { return {}; } }
+    // Keys that make up a complete backup: current buffer, week history, config fields.
+    const BACKUP_KEYS = [STATE_KEY, HISTORY_KEY, 'cfg-name', 'cfg-email', 'cfg-dept', WEEK_CONFIG_KEY];
+    // These keys hold JSON in localStorage; backups store them as real nested
+    // objects (not escaped strings) so the exported file is human-readable.
+    const JSON_BACKUP_KEYS = [STATE_KEY, HISTORY_KEY];
+    function buildBackupBundle() {
+        const data = {};
+        BACKUP_KEYS.forEach(k => {
+            const v = localStorage.getItem(k);
+            if (v === null) return;
+            if (JSON_BACKUP_KEYS.includes(k)) {
+                try { data[k] = JSON.parse(v); return; } catch (e) { /* fall back to raw string */ }
+            }
+            data[k] = v;
+        });
+        return { version: 2, exportedAt: new Date().toISOString(), data };
+    }
+    function exportBackup() {
+        const bundle = buildBackupBundle();
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${IS_WEEKLY_TRACKER ? 'weekly-' : ''}work-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+    function applyBackup(bundle) {
+        if (!bundle || !bundle.data || typeof bundle.data !== 'object' || !(STATE_KEY in bundle.data)) {
+            throw new Error('not a Work Tracker backup');
+        }
+        BACKUP_KEYS.forEach(k => {
+            if (k in bundle.data) {
+                const v = bundle.data[k];
+                // v2 backups store JSON keys as objects; v1 stored them as strings.
+                localStorage.setItem(k, (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+            } else {
+                localStorage.removeItem(k);
+            }
+        });
+    }
+    function importBackup(input) {
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            let bundle;
+            try {
+                bundle = JSON.parse(reader.result);
+                if (!bundle || !bundle.data || !(STATE_KEY in bundle.data)) throw new Error('not a Work Tracker backup');
+            } catch (e) {
+                alert('❌ Could not restore: ' + e.message);
+                return;
+            }
+            if (!confirm('⚠ This replaces all current data with the backup. Continue?')) return;
+            applyBackup(bundle);
+            location.reload();
+        };
+        reader.readAsText(file);
+    }
+    // Parse a week label ("Week of 5 Aug - 9 Aug · 2026") into its Monday Date.
+    function weekMonday(weekLabel) {
+        const m = weekLabel.match(/Week of\s+(\d+)\s+([A-Za-z]+).*·\s*(\d{4})/);
+        if (!m) return null;
+        const mon = MONTHS_SHORT.indexOf(m[2]);
+        if (mon < 0) return null;
+        return new Date(parseInt(m[3], 10), mon, parseInt(m[1], 10));
+    }
+    // Date tag ("9 Aug") for a given weekday within any week label.
+    function dateTagFor(weekLabel, dayName) {
+        const monday = weekMonday(weekLabel);
+        const off = DAYS.indexOf(dayName);
+        if (!monday || off === -1) return '';
+        const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + off);
+        return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+    }
+    // ----- Week range stepper (‹ label ›) -----
+    let weekCursor = null; // Monday Date of the selected week
+    function mondayOf(date) {
+        const day = (date.getDay() + 6) % 7; // 0 = Monday
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate() - day);
+    }
+    function weekLabelFromMonday(d) {
+        const fri = new Date(d); fri.setDate(fri.getDate() + 4);
+        const mm = MONTHS_SHORT[d.getMonth()], fm = MONTHS_SHORT[fri.getMonth()];
+        const tail = `${fri.getDate()} ${d.getMonth() === fri.getMonth() ? mm : fm} · ${d.getFullYear()}`;
+        return `Week of ${d.getDate()} ${mm} - ${tail}`;
+    }
+    function displayWeekRange(weekLabel) {
+        return (weekLabel || '').replace(/^Week of\s+/, '');
+    }
+    function setWeek(monday, silent) {
+        weekCursor = monday;
+        const label = weekLabelFromMonday(monday);
+        const input = document.getElementById('cfg-week');
+        input.value = label;
+        document.getElementById('cfg-week-label').textContent = label.replace('Week of ', '');
+        localStorage.setItem(WEEK_CONFIG_KEY, label);
+        if (!silent) input.dispatchEvent(new Event('change'));
+    }
+    function stepWeek(delta) {
+        const d = new Date(weekCursor);
+        d.setDate(d.getDate() + delta * 7);
+        setWeek(d);
+    }
+    function goCurrentWeek() { setWeek(mondayOf(new Date())); }
+    // A brand-new empty week (one blank task row, like a fresh start).
+    function emptyWeek() {
+        const tasks = {}, holidays = {};
+        DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
+        return { tasks, plans: [], holidays, achievement: '', blockers: [], notes: [] };
+    }
+    // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
+    function normalizeState(s) {
+        if (!s) return s;
+        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = false; }); });
+        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = false; });
+        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = false; });
+        return s;
+    }
+    // Load the selected week's saved data into state (or an empty week), then render.
+    function loadWeekIntoState(label) {
+        const hist = loadHistory();
+        if (hist[label]) {
+            const h = JSON.parse(JSON.stringify(hist[label]));
+            const tasks = {}, holidays = {};
+            DAYS.forEach(d => { tasks[d] = (h.tasks && h.tasks[d]) || []; holidays[d] = !!(h.holidays && h.holidays[d]); });
+            state = { tasks, plans: h.plans || [], holidays, achievement: h.achievement || '', blockers: h.blockers || [], notes: h.notes || [] };
+        } else {
+            state = emptyWeek();
+        }
+        normalizeState(state);
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+        renderTracker();
+    }
+    function escapeHtml(s) { return s ? s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : ''; }
+
+    function autoCalculateDateTag(dayName) {
+        return dateTagFor(document.getElementById('cfg-week').value, dayName);
+    }
+
+    function toggleHoliday(day) {
+        state.holidays[day] = !state.holidays[day];
+        saveState();
+        renderTracker();
+    }
+
+    function renderTracker() {
+        const container = document.getElementById('days-container');
+        container.innerHTML = '';
+
+        const achEl = document.getElementById('achievement-input');
+        if (achEl) achEl.value = state.achievement || '';
+
+        TRACKER_PERIODS.forEach((day, index) => {
+            const calculatedDate = autoCalculateDateTag(day);
+            const isHoliday = state.holidays[day];
+            
+            let card = document.createElement('div');
+            card.className = `day-card ${isHoliday ? 'is-holiday' : ''}`;
+            
+            let copyBtnHtml = (!IS_WEEKLY_TRACKER && index > 0 && !isHoliday) ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" title="Copy from yesterday" onclick="copyUnfinishedSmart('${day}')">📋</button>` : '';
+            let holidayBtnText = isHoliday ? '🔓' : '🏖️';
+            let holidayBtnTitleText = isHoliday ? '🔓 Set as Working Day' : '🏖️ Set as Holiday / Off';
+            let holidayBtnClass = isHoliday ? 'btn-primary' : 'btn-warning';
+            let dateDisplay = calculatedDate ? `📅 ${calculatedDate}` : '(Set Week Range to auto-date)';
+            const periodTitle = IS_WEEKLY_TRACKER ? displayWeekRange(document.getElementById('cfg-week').value) : day;
+            const periodIcon = IS_WEEKLY_TRACKER ? '📆' : (isHoliday ? '🏖️' : '☀️');
+            const dateHtml = IS_WEEKLY_TRACKER ? '' : `<small style="color:#8b949e; font-weight:normal; margin-left:8px;">${dateDisplay}</small>`;
+            const holidayButtonHtml = IS_WEEKLY_TRACKER ? '' : `<button class="btn ${holidayBtnClass} holiday-toggle" style="padding:4px 10px; font-size:12px;" title="${holidayBtnTitleText}" onclick="toggleHoliday('${day}')">${holidayBtnText}</button>`;
+
+            let html = `
+                <div class="day-header">
+                    <span class="day-title">
+                        ${periodIcon} ${periodTitle}
+                        ${dateHtml}
+                        ${isHoliday ? '<strong style="color:var(--danger); margin-left:12px;">[HOLIDAY / DAY OFF]</strong>' : ''}
+                    </span>
+                    <div class="day-actions">
+                        ${holidayButtonHtml}
+                        ${copyBtnHtml}
+                        <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="addTask('${day}')">＋ Add Task</button>
+                    </div>
+                </div>
+                <table class="task-table">
+                    <thead><tr><th style="width: 25%;">Title / Ticket</th><th style="width: 50%;">Description</th><th style="width: 15%;">Status</th><th style="width: 10%;">Action</th></tr></thead>
+                    <tbody>
+            `;
+
+            if(!isHoliday) {
+                if(!state.tasks[day] || state.tasks[day].length === 0) {
+                    html += `<tr><td colspan="4" style="color:#9ca3af; text-align:center; padding:12px;">No tasks logged. Click "+ Add Task" to start.</td></tr>`;
+                } else {
+                    state.tasks[day].forEach((t, i) => {
+                        html += `<tr>
+                            <td><textarea rows="1" onchange="updateTask('${day}',${i},'title',this.value)" placeholder="e.g. #33263">${escapeHtml(t.title)}</textarea></td>
+                            <td><textarea rows="1" onchange="updateTask('${day}',${i},'desc',this.value)" placeholder="Task details...">${escapeHtml(t.desc)}</textarea></td>
+                            <td>
+                                <select class="status-select status-${t.status}" onchange="updateTask('${day}',${i},'status',this.value)">
+                                    <option value="done" ${t.status==='done'?'selected':''}>✓ Done</option>
+                                    <option value="progress" ${t.status==='progress'?'selected':''}>↻ Progress</option>
+                                    <option value="blocked" ${t.status==='blocked'?'selected':''}>! Blocker</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div class="action-cell-wrap">
+                                    <button class="link-toggle ${t.linkOn?'on':''}" title="${t.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('task','${day}',${i})">🔗</button>
+                                    <button class="btn btn-danger" style="flex:1; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                        if (t.linkOn) {
+                            html += `<tr class="link-row"><td colspan="4" style="padding:8px 12px;">
+                                <div class="link-field">
+                                    <label>🔗 Reference link</label>
+                                    <input type="url" onchange="updateTask('${day}',${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(t.link || '')}">
+                                </div>
+                            </td></tr>`;
+                        }
+                        if (t.status === 'blocked') {
+                            html += `<tr><td colspan="4" style="background:#1c1416; padding:8px 12px;">
+                                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                    <div style="flex:1; min-width:200px;">
+                                        <label style="display:block; font-size:11px; color:#f85149; font-weight:600; margin-bottom:4px;">🔒 Blocker reason</label>
+                                        <textarea rows="2" style="width:100%; box-sizing:border-box;" onchange="updateTask('${day}',${i},'blockerReason',this.value)" placeholder="e.g. Pending on API docs">${escapeHtml(t.blockerReason || '')}</textarea>
+                                    </div>
+                                    <div style="flex:1; min-width:200px;">
+                                        <label style="display:block; font-size:11px; color:#3fb950; font-weight:600; margin-bottom:4px;">🔑 How to unblock</label>
+                                        <textarea rows="2" style="width:100%; box-sizing:border-box;" onchange="updateTask('${day}',${i},'blockerUnblock',this.value)" placeholder="e.g. Follow up with platform team">${escapeHtml(t.blockerUnblock || '')}</textarea>
+                                    </div>
+                                </div>
+                            </td></tr>`;
+                        }
+                    });
+                }
+            } else {
+                html += `<tr><td colspan="4" style="color:#9ca3af; text-align:center; padding:24px; font-style:italic;">Out of Office.</td></tr>`;
+            }
+            card.innerHTML = html + `</tbody></table>`;
+            container.appendChild(card);
+        });
+
+        const tbody = document.getElementById('plans-tbody');
+        tbody.innerHTML = state.plans.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No next week plans recorded.</td></tr>` : '';
+        state.plans.forEach((p, i) => {
+            tbody.innerHTML += `<tr>
+                <td><input type="text" value="${escapeHtml(p.text)}" onchange="updatePlan(${i},'text',this.value)" placeholder="Next week task..."></td>
+                <td>
+                    <select onchange="updatePlan(${i},'priority',this.value)" style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border); background:#0d1117; color:#c9d1d9;">
+                        <option value="High" ${p.priority==='High'?'selected':''}>🔴 High</option>
+                        <option value="Medium" ${p.priority==='Medium'?'selected':''}>🟡 Medium</option>
+                        <option value="Low" ${p.priority==='Low'?'selected':''}>🟢 Low</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="link-toggle ${p.linkOn?'on':''}" title="${p.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('plan',${i})">🔗</button>
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+            if (p.linkOn) {
+                tbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                    <div class="link-field">
+                        <label>🔗 Reference link</label>
+                        <input type="url" onchange="updatePlan(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(p.link || '')}">
+                    </div>
+                </td></tr>`;
+            }
+        });
+
+        const btbody = document.getElementById('blockers-tbody');
+        btbody.innerHTML = state.blockers.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No standalone blockers recorded.</td></tr>` : '';
+        state.blockers.forEach((b, i) => {
+            btbody.innerHTML += `<tr>
+                <td><textarea rows="1" onchange="updateBlocker(${i},'reason',this.value)" placeholder="e.g. Waiting on vendor SLA">${escapeHtml(b.reason)}</textarea></td>
+                <td><textarea rows="1" onchange="updateBlocker(${i},'unblock',this.value)" placeholder="e.g. Escalate to manager">${escapeHtml(b.unblock)}</textarea></td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="link-toggle ${b.linkOn?'on':''}" title="${b.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('blocker',${i})">🔗</button>
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteBlocker(${i})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+            if (b.linkOn) {
+                btbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                    <div class="link-field">
+                        <label>🔗 Reference link</label>
+                        <input type="url" onchange="updateBlocker(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(b.link || '')}">
+                    </div>
+                </td></tr>`;
+            }
+        });
+
+        const ntbody = document.getElementById('notes-tbody');
+        ntbody.innerHTML = state.notes.length === 0 ? `<tr><td colspan="2" style="color:#9ca3af; text-align:center; padding:12px;">No notes recorded.</td></tr>` : '';
+        state.notes.forEach((n, i) => {
+            ntbody.innerHTML += `<tr>
+                <td><input type="text" value="${escapeHtml(n.text || '')}" onchange="updateNote(${i},this.value)" placeholder="e.g. I will be off next week"></td>
+                <td>
+                    <div class="action-cell-wrap">
+                        <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteNote(${i})">Delete</button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+    }
+
+    function copyUnfinishedSmart(currentDay) {
+        const currentIdx = DAYS.indexOf(currentDay);
+        if(currentIdx <= 0) return;
+        let targetDay = null;
+        for (let i = currentIdx - 1; i >= 0; i--) {
+            if (!state.holidays[DAYS[i]]) { targetDay = DAYS[i]; break; }
+        }
+        if(!targetDay) return;
+        const unfinished = state.tasks[targetDay].filter(t => t.status === 'progress' || t.status === 'blocked');
+        if(!state.tasks[currentDay]) state.tasks[currentDay] = [];
+        unfinished.forEach(t => {
+            if(!state.tasks[currentDay].some(existTask => existTask.id === t.id)) {
+                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', linkOn: !!t.linkOn });
+            }
+        });
+        saveState(); renderTracker();
+    }
+
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
+    function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
+    function updateAchievement(v) { state.achievement = v; saveState(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
+    function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
+    function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
+    function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
+    function addNoteItem() { state.notes.push({text:''}); saveState(); renderTracker(); }
+    function updateNote(i, v) { state.notes[i].text = v; saveState(); }
+    function deleteNote(i) { state.notes.splice(i, 1); saveState(); renderTracker(); }
+    // Toggle whether an item uses a reference link. kind: 'task' (d,i), 'plan' (i), 'blocker' (i).
+    function toggleLink(kind, a, b) {
+        let item;
+        if (kind === 'task') item = state.tasks[a][b];
+        else if (kind === 'plan') item = state.plans[a];
+        else if (kind === 'blocker') item = state.blockers[a];
+        if (!item) return;
+        item.linkOn = !item.linkOn;
+        saveState(); renderTracker();
+    }
+    function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.notes=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
+
+    function validateConfiguration() {
+        const name = document.getElementById('cfg-name').value.trim();
+        const email = document.getElementById('cfg-email').value.trim();
+        const dept = document.getElementById('cfg-dept').value.trim();
+        const week = document.getElementById('cfg-week').value.trim();
+        if(!name || !email || !dept || !week) {
+            alert("❌ Please fill in all required fields in the 'User Configuration' panel first.");
+            return false;
+        }
+        return { name, email, dept, week };
+    }
+
+    function copySubject() {
+        const name = document.getElementById('cfg-name').value.trim();
+        const week = document.getElementById('cfg-week').value.trim();
+        if (!name || !week) {
+            alert("❌ Please fill in Name and Week Range in the configuration first.");
+            return;
+        }
+        const scope = (document.getElementById('report-scope') || {}).value || 'weekly';
+        const meta = reportMeta(scope, week);
+        const subject = `${meta.badge} - ${name}'s ${meta.title}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(subject).then(() => {
+                flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
+            }).catch(() => {
+                fallbackCopyText(subject);
+            });
+        } else {
+            fallbackCopyText(subject);
+        }
+    }
+
+    function fallbackCopyText(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            flashCopied('copySubjectBtn', '📌 Copy Subject', '✓ Subject Copied!');
+        } catch(e) {
+            flashCopied('copySubjectBtn', '📌 Copy Subject', '⚠ Copy failed');
+        }
+        document.body.removeChild(ta);
+    }
+
+    // Gather the week snapshots to include for a scope: weekly = current only;
+    // monthly/quarterly = every stored week whose Monday falls in the same
+    // month/quarter, with the live (unsaved) current week taking precedence.
+    function collectSnapshots(scope, currentWeek) {
+        const live = { week: currentWeek, tasks: state.tasks, holidays: state.holidays };
+        if (scope === 'weekly') return [live];
+        const cur = weekMonday(currentWeek);
+        if (!cur) return [live];
+        const hist = loadHistory();
+        const snaps = {};
+        Object.keys(hist).forEach(wk => { snaps[wk] = { week: wk, tasks: hist[wk].tasks || {}, holidays: hist[wk].holidays || {} }; });
+        snaps[currentWeek] = live;
+        const inRange = (snap) => {
+            const d = weekMonday(snap.week);
+            if (!d || d.getFullYear() !== cur.getFullYear()) return false;
+            return scope === 'monthly' ? d.getMonth() === cur.getMonth()
+                : Math.floor(d.getMonth() / 3) === Math.floor(cur.getMonth() / 3);
+        };
+        return Object.values(snaps).filter(inRange).sort((a, b) => weekMonday(a.week) - weekMonday(b.week));
+    }
+
+    // Flatten week snapshots into done/progress/blocked lists. keyByTitle merges a
+    // recurring task across weeks (ids differ per week) into one entry with a range.
+    function aggregateTasks(snapshots, keyByTitle) {
+        let taskMap = new Map();
+        snapshots.forEach(snap => {
+            const periods = IS_WEEKLY_TRACKER ? ['Monday'] : DAYS;
+            periods.forEach(d => {
+                if (snap.holidays && snap.holidays[d]) return;
+                const dateTag = IS_WEEKLY_TRACKER ? displayWeekRange(snap.week) : dateTagFor(snap.week, d);
+                (snap.tasks[d] || []).forEach(t => {
+                    if (!t.title.trim() && !t.desc.trim()) return;
+                    const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
+                    let dv = dateTag || d;
+                    if (!taskMap.has(mapKey)) {
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', dates: [dv] });
+                    } else {
+                        let existing = taskMap.get(mapKey);
+                        existing.status = t.status; existing.title = t.title;
+                        existing.blockerReason = t.blockerReason || ''; existing.blockerUnblock = t.blockerUnblock || '';
+                        existing.link = (t.linkOn && t.link) ? t.link : existing.link;
+                        if (!existing.dates.includes(dv)) existing.dates.push(dv);
+                    }
+                });
+            });
+        });
+        let doneTasks = [], progTasks = [], blockTasks = [];
+        taskMap.forEach(t => {
+            let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '' };
+            if (t.status === 'done') doneTasks.push(compiled);
+            else if (t.status === 'blocked') blockTasks.push(compiled);
+            else if (t.status === 'progress') progTasks.push(compiled);
+        });
+        return { doneTasks, progTasks, blockTasks };
+    }
+
+    // Merge items sharing the same title (trimmed, case-insensitive) into one
+    // entry: keep the most recent description (tasks arrive chronologically, so
+    // later wins), preserve the first non-empty link, and union the date ranges.
+    // Blank-title items are left as separate entries.
+    function mergeByTitle(tasks) {
+        const groups = new Map();
+        const order = [];
+        const startOf = (s) => (s || '').split(' - ')[0].trim();
+        const endOf = (s) => { const p = (s || '').split(' - '); return p[p.length - 1].trim(); };
+        const unionDateTag = (a, b) => {
+            const s = startOf(a) || startOf(b);
+            const e = endOf(b) || endOf(a);
+            if (!s) return e;
+            if (!e || e === s) return s;
+            return `${s} - ${e}`;
+        };
+        tasks.forEach(t => {
+            const key = (t.title || '').trim().toLowerCase();
+            if (!key || !groups.has(key)) {
+                const g = { item: Object.assign({}, t) };
+                if (key) groups.set(key, g);
+                order.push(g);
+            } else {
+                const g = groups.get(key);
+                g.item.title = t.title;
+                g.item.desc = t.desc;
+                if (!g.item.link && t.link) g.item.link = t.link;
+                if (t.blockerReason && t.blockerReason.trim()) g.item.blockerReason = t.blockerReason;
+                if (t.blockerUnblock && t.blockerUnblock.trim()) g.item.blockerUnblock = t.blockerUnblock;
+                g.item.dateTag = unionDateTag(g.item.dateTag, t.dateTag);
+            }
+        });
+        return order.map(g => g.item);
+    }
+
+    // Title / badge / footer / plans-visibility for each scope.
+    function reportMeta(scope, currentWeek) {
+        const d = weekMonday(currentWeek);
+        if (scope === 'monthly') {
+            const badge = d ? `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}` : 'Monthly';
+            return { title: 'Monthly Report', badge, showPlans: false };
+        }
+        if (scope === 'quarterly') {
+            const badge = d ? `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()}` : 'Quarterly';
+            return { title: 'Quarterly Review', badge, showPlans: false };
+        }
+        return { title: IS_WEEKLY_TRACKER ? 'Weekly Work Report' : 'Weekly Report', badge: currentWeek, showPlans: true };
+    }
+
+    /* 💡 核心底层修复：全内联高解析度 HTML 生成器 (Outlook 完美适配版) */
+    function buildFinalReportContent() {
+        const config = validateConfiguration();
+        if(!config) return null; 
+
+        const scope = (document.getElementById('report-scope') || {}).value || 'weekly';
+        const meta = reportMeta(scope, config.week);
+        const snapshots = collectSnapshots(scope, config.week);
+        const { doneTasks, progTasks, blockTasks } = aggregateTasks(snapshots, scope !== 'weekly');
+        const mergedDoneTasks = mergeByTitle(doneTasks);
+        const mergedProgTasks = mergeByTitle(progTasks);
+        const mergedBlockTasks = mergeByTitle(blockTasks);
+
+        // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
+        // Helper: build a section header row with icon + title
+        function buildSectionHeader(iconBg, iconColor, icon, title) {
+            return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr>` +
+                `<td width="44" valign="middle" style="padding:14px 0 14px 20px;">` +
+                `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="${iconBg}" style="background-color:${iconBg}; width:24px; height:24px; color:${iconColor}; font-weight:bold; font-size:14px; line-height:24px; text-align:center; border-radius:4px;">${icon}</td></tr></table>` +
+                `</td>` +
+                `<td valign="middle" style="padding:14px 20px 14px 10px; font-size:15px; font-weight:600; color:#1a1a1a; font-family:'Segoe UI',-apple-system,sans-serif;">${title}</td>` +
+                `</tr></table>`;
+        }
+
+        // Helper: build a small "🔗 ref" hyperlink for an item's reference URL (email-safe inline styles).
+        function refLink(url) {
+            if (!url || !url.trim()) return '';
+            let href = url.trim();
+            if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href)) href = 'https://' + href;
+            return ` <a href="${escapeHtml(href)}" target="_blank" style="font-size:11px; color:#0b5cad; text-decoration:none; margin-left:6px; white-space:nowrap;">🔗 ref</a>`;
+        }
+
+        // Helper: build a task item row with icon + content + badge
+        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText) {
+            return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom:1px solid #f3f4f6; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr>` +
+                `<td width="44" valign="top" style="padding:12px 0 12px 20px;">` +
+                `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="${iconBg}" style="background-color:${iconBg}; width:20px; height:20px; color:${iconColor}; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${icon}</td></tr></table>` +
+                `</td>` +
+                `<td valign="top" style="padding:12px 12px; text-align:left;">` +
+                `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}${refLink(t.link)}</div>` +
+                `<div style="font-size:13px; color:#616161; margin-top:2px;">${escapeHtml(t.desc)}</div>` +
+                // `<div style="font-size:11px; color:#9ca3af; margin-top:4px;">📅 ${escapeHtml(t.dateTag)}</div>` +
+                `</td>` +
+                `<td width="100" valign="top" style="padding:12px 20px 12px 0; text-align:right; white-space:nowrap;">` +
+                `<table border="0" cellspacing="0" cellpadding="0" align="right"><tr><td bgcolor="${badgeBg}" style="background-color:${badgeBg}; padding:2px 8px; color:${badgeColor}; font-size:11px; font-weight:600; border-radius:4px; white-space:nowrap;">${badgeText}</td></tr></table>` +
+                `</td>` +
+                `</tr></table>`;
+        }
+
+        // Spacer helper
+        let spacer = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="height:16px; font-size:1px; line-height:1px;">&nbsp;</td></tr></table>`;
+        let spacerLg = `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="height:24px; font-size:1px; line-height:1px;">&nbsp;</td></tr></table>`;
+
+        // Outer container table with bgcolor on <td>
+        let out = `<div id="actual-report-root">` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:800px; margin:0 auto; font-family:'Segoe UI',-apple-system,sans-serif; color:#1a1a1a; line-height:1.65;">` +
+            `<tr><td bgcolor="#f9fafb" style="background-color:#f9fafb; padding:20px;">`;
+
+        // Header
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:12px;">` +
+            `<tr><td bgcolor="#0078d4" style="background-color:#0078d4; padding:28px 32px; border-radius:12px;">` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">` +
+            `<tr>` +
+            `<td align="left" valign="middle" style="padding:0; vertical-align:middle;">` +
+            `<h1 style="font-size:22px; font-weight:600; margin:0; color:#ffffff; font-family:'Segoe UI',sans-serif; line-height:1.2;">${escapeHtml(meta.title)}</h1>` +
+            `<div style="font-size:16px; margin-top:4px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">${escapeHtml(config.name)}</div>` +
+            `</td>` +
+            `<td align="right" valign="middle" style="padding:0; vertical-align:middle; text-align:right;">` +
+            `<table border="0" cellspacing="0" cellpadding="0" style="display:inline-block; border-collapse:collapse; border-radius:20px;">` +
+            `<tr><td align="center" valign="middle" bgcolor="#339be0" style="background-color:#339be0; padding:6px 14px; color:#ffffff; font-size:13px; font-weight:500; font-family:'Segoe UI',sans-serif; white-space:nowrap; line-height:1; border-radius:20px;">${escapeHtml(meta.badge)}</td></tr>` +
+            `</table>` +
+            `</td></tr></table>` +
+            `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td style="padding-top:16px; font-size:13px; color:#e8e8e8; font-family:'Segoe UI',sans-serif;">` +
+            `<span style="margin-right:24px;">📧 ${escapeHtml(config.email)}</span>` +
+            `<span>🎯 ${escapeHtml(config.dept)}</span>` +
+            `</td></tr></table>` +
+            `</td></tr></table>`;
+
+        out += spacerLg;
+
+        // Each section builds its own HTML and is only added when it has content.
+        // Empty sections are hidden entirely; if nothing has content a single
+        // fallback message is shown instead.
+        const sections = [];
+
+        // 1. Completed Tasks
+        if (mergedDoneTasks.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#dff6dd', '#107c10', '✓', 'Completed Tasks') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+            mergedDoneTasks.forEach(t => {
+                s += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 2. In Progress
+        if (mergedProgTasks.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#deecf9', '#0078d4', '↻', 'In Progress') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+            mergedProgTasks.forEach(t => {
+                s += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 3. Blockers
+        const standaloneBlockers = (meta.showPlans ? (state.blockers || []) : []).filter(b => (b.reason || '').trim() || (b.unblock || '').trim());
+        if (mergedBlockTasks.length || standaloneBlockers.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#fed9cc', '#d13438', '!', 'Blockers &amp; Risks') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:16px 20px;">`;
+            const blockerDetail = (reason, unblock) => {
+                let d = '';
+                if (reason && reason.trim()) d += `<div style="padding:4px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(reason.trim())}</div>`;
+                if (unblock && unblock.trim()) d += `<div style="padding:2px 0 0 16px; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(unblock.trim())}</div>`;
+                return d;
+            };
+            mergedBlockTasks.forEach(t => {
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                    `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;"><strong style="color:#d13438;">${escapeHtml(t.title)}</strong>: ${escapeHtml(t.desc)} <span style="color:#9ca3af; font-size:11px; margin-left:6px;">(📅 ${escapeHtml(t.dateTag)})</span>${refLink(t.link)}` +
+                    blockerDetail(t.blockerReason, t.blockerUnblock) +
+                    `</td>` +
+                    `</tr></table>`;
+            });
+            standaloneBlockers.forEach(b => {
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom:10px;"><tr>` +
+                    `<td width="16" valign="top" style="padding:3px 0 0 0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#d13438" style="background-color:#d13438; width:6px; height:6px; font-size:1px; line-height:1px; border-radius:50%;">&nbsp;</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="top" style="padding:0 0 0 10px; font-size:13px; color:#1a1a1a; text-align:left;">` +
+                    (b.reason && b.reason.trim() ? `<strong style="color:#d13438;">🔒 Blocker:</strong> ${escapeHtml(b.reason.trim())}${refLink(b.linkOn ? b.link : '')}` : '') +
+                    (b.unblock && b.unblock.trim() ? `<div style="padding:2px 0 0 0; font-size:12px; color:#616161;"><strong style="color:#107c10;">🔑 Resolution:</strong> ${escapeHtml(b.unblock.trim())}</div>` : '') +
+                    `</td>` +
+                    `</tr></table>`;
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 4. Achievement (weekly only)
+        if (meta.showPlans && state.achievement && state.achievement.trim()) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#dff6dd', '#107c10', '★', 'Achievement') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px; font-size:13px; color:#1a1a1a; text-align:left; white-space:pre-wrap;">` +
+                escapeHtml(state.achievement.trim()) +
+                `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 5. Next Week Plans (weekly only)
+        const planItems = meta.showPlans ? (state.plans || []).filter(p => (p.text || '').trim()) : [];
+        if (planItems.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#f0ebf8', '#8764b8', '→', 'Next Week Plans') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
+            planItems.forEach((p, idx) => {
+                let bg = p.priority === 'High' ? '#fed9cc' : p.priority === 'Low' ? '#dff6dd' : '#fff4ce';
+                let fg = p.priority === 'High' ? '#d13438' : p.priority === 'Low' ? '#107c10' : '#ff8c00';
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                    `<td width="32" valign="middle" style="padding:6px 0;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" bgcolor="#f0ebf8" style="background-color:#f0ebf8; width:20px; height:20px; color:#8764b8; font-size:11px; font-weight:bold; line-height:20px; text-align:center; border-radius:50%;">${idx+1}</td></tr></table>` +
+                    `</td>` +
+                    `<td valign="middle" style="padding:6px 12px; font-size:13px; color:#1a1a1a; text-align:left;">${escapeHtml(p.text)}${refLink(p.linkOn ? p.link : '')}</td>` +
+                    `<td width="60" valign="middle" style="padding:6px 0; text-align:right;">` +
+                    `<table border="0" cellspacing="0" cellpadding="0" align="right"><tr><td bgcolor="${bg}" style="background-color:${bg}; padding:2px 6px; color:${fg}; font-size:11px; font-weight:600; border-radius:4px;">${p.priority}</td></tr></table>` +
+                    `</td>` +
+                    `</tr></table>`;
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 6. Notes (weekly only) — omitted when there are no non-empty notes
+        const notesList = meta.showPlans ? (state.notes || []).filter(n => (n.text || '').trim()) : [];
+        if (notesList.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#eaeef2', '#3b4a57', 'i', 'Notes') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:12px 20px;">`;
+            notesList.forEach(n => {
+                s += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
+                    `<td width="20" valign="top" style="padding:6px 0; font-size:13px; color:#3b4a57; line-height:1.5;">&bull;</td>` +
+                    `<td valign="top" style="padding:6px 8px; font-size:13px; color:#1a1a1a; text-align:left; line-height:1.5;">${escapeHtml(n.text.trim())}</td>` +
+                    `</tr></table>`;
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        if (sections.length) {
+            out += sections.join(spacer);
+        } else {
+            // No section has any content — show a single meaningful message.
+            out += `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; padding:36px 20px; text-align:center; color:#616161; font-size:14px; line-height:1.6;">` +
+                `📭 <strong style="color:#1a1a1a;">Nothing to report for this period.</strong><br>No completed tasks, work in progress, blockers, or plans were logged.` +
+                `</td></tr></table>`;
+        }
+
+        out += spacer;
+
+        // Footer
+        out += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:15px; font-size:11px; color:#9ca3af; font-family:'Segoe UI',sans-serif;">DDAzure ${escapeHtml(meta.title)} | ${escapeHtml(meta.badge)}</td></tr></table>`;
+
+        // Close container
+        out += `</td></tr></table></div>`;
+        return out;
+    }
+
+    var lastGeneratedHtml = '';
+    function openReviewModal() {
+        const finalHtml = buildFinalReportContent();
+        if(!finalHtml) return; 
+        lastGeneratedHtml = finalHtml;
+        document.getElementById('htmlPreview').innerHTML = finalHtml;
+        document.getElementById('codeOutput').value = finalHtml;
+        document.getElementById('reviewModal').style.display = 'flex';
+    }
+    
+    function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
+    
+    /* 💡 完全摒弃 Alert！采用闪烁气泡提示逻辑，完美适配 file:// 协议与高阶 Clipboard API */
+    function copyFormattedBody() {
+        // Use the raw HTML string to preserve bgcolor attributes (DOM may strip them)
+        const htmlStr = lastGeneratedHtml;
+        if (!htmlStr) return;
+
+        if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+            const blob = new Blob([htmlStr], { type: 'text/html' });
+            const el = document.getElementById('actual-report-root');
+            const blobPlain = new Blob([el ? el.innerText : ''], { type: 'text/plain' });
+            
+            navigator.clipboard.write([
+                new ClipboardItem({ 'text/html': blob, 'text/plain': blobPlain })
+            ]).then(() => {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '✓ Copied! Paste into Outlook');
+            }).catch(() => {
+                selectAndCopyFallback(document.getElementById('actual-report-root'));
+            });
+        } else {
+            selectAndCopyFallback(document.getElementById('actual-report-root'));
+        }
+    }
+
+    function selectAndCopyFallback(el) {
+        const range = document.createRange();
+        range.selectNode(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        
+        try {
+            const successful = document.execCommand('copy');
+            if(successful) {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '✓ Copied! Paste into Outlook');
+            } else {
+                flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '⚠ Select manually & Ctrl+C');
+            }
+        } catch(e) {
+            flashCopied('copyBodyBtn', '📋 Copy Formatted Body', '⚠ Select manually & Ctrl+C');
+        }
+        sel.removeAllRanges(); // 清理高亮选择状态
+    }
+
+    function flashCopied(btnId, originalText, copiedText) {
+        const btn = document.getElementById(btnId);
+        btn.textContent = copiedText;
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('copied');
+        }, 2500);
+    }
+    // ponytail: minimal self-check. Open with ?selftest to run; asserts fail loud.
+    function runSelfTest() {
+        const assert = (c, m) => { if (!c) { document.documentElement.dataset.selftest = 'fail'; console.error('SELFTEST FAIL:', m); alert('SELFTEST FAIL: ' + m); throw new Error(m); } };
+        assert(document.getElementById('days-container').children.length === TRACKER_PERIODS.length, 'tracker renders the expected number of period cards');
+        assert(reportMeta('weekly', 'Week of 3 Aug - 7 Aug · 2026').title === (IS_WEEKLY_TRACKER ? 'Weekly Work Report' : 'Weekly Report'), 'weekly report title matches tracker mode');
+        const configWidths = Array.from(document.querySelectorAll('.config-grid .form-group')).map(el => el.getBoundingClientRect().width);
+        assert(Math.max(...configWidths) - Math.min(...configWidths) < 2, 'configuration fields have consistent widths');
+        assert(getComputedStyle(document.querySelector('.week-nav')).display !== 'none', 'week navigation remains available');
+        const aug = weekMonday('Week of 3 Aug - 7 Aug · 2026');
+        assert(aug && aug.getMonth() === 7 && aug.getFullYear() === 2026, 'weekMonday parses month/year');
+        assert(Math.floor(aug.getMonth() / 3) === 2, 'Aug is quarter Q3 (index 2)');
+        // Same task title recurring across two weeks merges into one ranged entry.
+        const snaps = [
+            { week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'a', title: 'Ship X', desc: '', status: 'progress' }] } },
+            { week: 'Week of 10 Aug - 14 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'b', title: 'Ship X', desc: '', status: 'done' }] } }
+        ];
+        const agg = aggregateTasks(snaps, true);
+        assert(agg.doneTasks.length === 1 && agg.progTasks.length === 0, 'cross-week dedupe keeps latest status');
+        assert(agg.doneTasks[0].dateTag.includes('-'), 'merged entry shows a date range');
+        // Blocked task carries reason/unblock through aggregation.
+        const bsnap = [{ week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: { Monday: [{ id: 'c', title: 'Deploy Y', desc: 'prod', status: 'blocked', blockerReason: 'Pending on API docs', blockerUnblock: 'Ping platform team' }] } }];
+        const bagg = aggregateTasks(bsnap, true);
+        assert(bagg.blockTasks.length === 1, 'blocked task aggregated');
+        assert(bagg.blockTasks[0].blockerReason === 'Pending on API docs' && bagg.blockTasks[0].blockerUnblock === 'Ping platform team', 'blocker reason/unblock carried through aggregation');
+        if (IS_WEEKLY_TRACKER) {
+            const weeklyAgg = aggregateTasks([{ week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: {
+                Monday: [{ id: 'w1', title: 'Ship weekly update', desc: 'summary', status: 'done' }]
+            } }], false);
+            assert(weeklyAgg.doneTasks.length === 1, 'weekly tracker aggregates its single week bucket');
+            assert(weeklyAgg.doneTasks[0].dateTag === '3 Aug - 7 Aug · 2026', 'weekly tracker report uses the full week range');
+            const originalState = state;
+            const originalConfig = {};
+            ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'].forEach(id => {
+                originalConfig[id] = document.getElementById(id).value;
+            });
+            state = emptyWeek();
+            state.tasks.Monday = [{ id: 'report-1', title: 'Ship weekly update', desc: 'summary', status: 'done', blockerReason: '', blockerUnblock: '', link: '', linkOn: false }];
+            document.getElementById('cfg-name').value = 'Self Test';
+            document.getElementById('cfg-email').value = 'selftest@example.com';
+            document.getElementById('cfg-dept').value = 'Engineering';
+            document.getElementById('cfg-week').value = 'Week of 3 Aug - 7 Aug · 2026';
+            const weeklyReport = buildFinalReportContent();
+            assert(weeklyReport.includes('Weekly Work Report'), 'weekly tracker generates a weekly work report');
+            assert(weeklyReport.includes('3 Aug - 7 Aug · 2026'), 'generated weekly work report includes the full week range');
+            state = originalState;
+            Object.keys(originalConfig).forEach(id => document.getElementById(id).value = originalConfig[id]);
+        } else {
+            // Daily tracker: the same title logged on two days merges into one ranged report entry.
+            const dupWeek = [{ week: 'Week of 3 Aug - 7 Aug · 2026', holidays: {}, tasks: {
+                Monday: [{ id: 'd1', title: 'Fix login', desc: 'auth', status: 'done' }, { id: 'k1', title: 'DB down', desc: 'prod', status: 'blocked', blockerReason: '', blockerUnblock: '' }],
+                Tuesday: [{ id: 'd2', title: 'Fix login', desc: 'auth', status: 'done' }, { id: 'k2', title: 'DB down', desc: 'prod', status: 'blocked', blockerReason: 'DBA offline', blockerUnblock: 'Escalate' }]
+            } }];
+            const dupAgg = aggregateTasks(dupWeek, false);
+            assert(dupAgg.doneTasks.length === 2 && dupAgg.blockTasks.length === 2, 'weekly scope yields raw duplicates before merge');
+            const mDone = mergeByTitle(dupAgg.doneTasks);
+            assert(mDone.length === 1, 'duplicate completed tasks merge to one');
+            assert(mDone[0].dateTag.includes('-'), 'merged completed task shows a date range');
+            const mBlock = mergeByTitle(dupAgg.blockTasks);
+            assert(mBlock.length === 1, 'duplicate blocked tasks merge to one');
+            assert(mBlock[0].blockerReason === 'DBA offline' && mBlock[0].blockerUnblock === 'Escalate', 'merge keeps latest non-empty blocker reason/resolution');
+        }
+        // Weekday date tags roll over month boundaries.
+        assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
+        // Backup round-trip: export current keys, wipe them, re-import, keys return.
+        const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
+        // v2 form: JSON keys stored as objects.
+        const bundle = { version: 2, data: {} };
+        BACKUP_KEYS.forEach(k => {
+            if (before[k] === null) return;
+            if (JSON_BACKUP_KEYS.includes(k)) { try { bundle.data[k] = JSON.parse(before[k]); return; } catch (e) {} }
+            bundle.data[k] = before[k];
+        });
+        if (!(STATE_KEY in bundle.data)) bundle.data[STATE_KEY] = {};
+        applyBackup(bundle);
+        assert(localStorage.getItem(STATE_KEY) === JSON.stringify(bundle.data[STATE_KEY]), 'v2 backup restores state key as stringified JSON');
+        // v1 backward compatibility: string values still restore verbatim.
+        applyBackup({ version: 1, data: { [STATE_KEY]: '{"tasks":{}}' } });
+        assert(localStorage.getItem(STATE_KEY) === '{"tasks":{}}', 'v1 string backup still restores');
+        // v1 -> v2 conversion: importing an old backup then exporting yields v2 nested objects.
+        applyBackup({ version: 1, data: { [STATE_KEY]: '{"tasks":{"Monday":[]}}', [HISTORY_KEY]: '{}' } });
+        const upgraded = buildBackupBundle();
+        assert(upgraded.version === 2, 'buildBackupBundle emits version 2');
+        assert(upgraded.data[STATE_KEY] && typeof upgraded.data[STATE_KEY] === 'object', 'v1 state string converts to nested object on export');
+        assert(typeof upgraded.data[HISTORY_KEY] === 'object', 'v1 history string converts to nested object on export');
+        BACKUP_KEYS.forEach(k => { if (before[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, before[k]); });
+        document.documentElement.dataset.selftest = 'pass';
+        console.log('SELFTEST PASS');
+    }
+    if (location.search.includes('selftest')) window.addEventListener('load', runSelfTest);
+</script>
+</body>
+</html>
