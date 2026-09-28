@@ -19,7 +19,8 @@ A pair of work trackers that generate formatted reports ready to paste into an e
 - Each week you fill in is snapshotted to `localStorage`, building the history that monthly reports aggregate from
 - Weekly tracker data is stored separately from daily tracker data, and its generated report uses the full week range for each task
 - Data persists in `localStorage` across sessions
-- **Backup / Restore** — since data lives in browser `localStorage` (lost if you clear cache), use **⬇ Backup** to download a `.json` snapshot of everything (tasks, week history, and config), and **⬆ Restore** to load it back on any browser/machine
+- **Backup / Restore** — since data lives in browser `localStorage` (lost if you clear cache), use **⬇ Backup** to download a `.json` snapshot of everything (tasks, week history, and config), and **⬆ Restore** to load it back on any browser/machine; weekly backup filenames use the selected Monday-Friday date range
+- New weekly tasks, blockers, and next-week plans show their optional **Reference link** field by default
 
 ## Usage
 

@@ -292,13 +292,26 @@
         });
         return { version: 2, exportedAt: new Date().toISOString(), data };
     }
+    function isoLocalDate(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    function backupFilename(weekLabel) {
+        const monday = weekMonday(weekLabel);
+        if (!monday) return `weekly-work-tracker-backup-${isoLocalDate(new Date())}.json`;
+        const friday = new Date(monday);
+        friday.setDate(friday.getDate() + 4);
+        return `weekly-work-tracker-backup-${isoLocalDate(monday)}-to-${isoLocalDate(friday)}.json`;
+    }
     function exportBackup() {
         const bundle = buildBackupBundle();
         const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${IS_WEEKLY_TRACKER ? 'weekly-' : ''}work-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = backupFilename((document.getElementById('cfg-week') || {}).value);
         document.body.appendChild(a); a.click(); a.remove();
         URL.revokeObjectURL(url);
     }
@@ -386,15 +399,15 @@
     function emptyWeek() {
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
-        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: true });
         return { tasks, plans: [], holidays, achievement: '', blockers: [], notes: [] };
     }
     // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
     function normalizeState(s) {
         if (!s) return s;
-        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = false; }); });
-        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = false; });
-        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = false; });
+        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = true; }); });
+        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = true; });
+        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = true; });
         return s;
     }
     // Load the selected week's saved data into state (or an empty week), then render.
@@ -603,14 +616,14 @@
         saveState(); renderTracker();
     }
 
-    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:true}); saveState(); renderTracker(); }
     function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
     function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
     function updateAchievement(v) { state.achievement = v; saveState(); }
-    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:true}); saveState(); renderTracker(); }
     function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
     function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
-    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:true}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
     function addNoteItem() { state.notes.push({text:''}); saveState(); renderTracker(); }
@@ -1134,6 +1147,12 @@
         }
         // Weekday date tags roll over month boundaries.
         assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
+        assert(backupFilename('Week of 21 Sep - 25 Sep · 2026') === 'weekly-work-tracker-backup-2026-09-21-to-2026-09-25.json', 'backup filename uses selected week range');
+        const defaultWeek = emptyWeek();
+        assert(defaultWeek.tasks.Monday[0].linkOn === true, 'new week enables reference links by default');
+        const legacyState = { tasks: { Monday: [{ link: '' }] }, plans: [{}], blockers: [{}] };
+        normalizeState(legacyState);
+        assert(legacyState.tasks.Monday[0].linkOn && legacyState.plans[0].linkOn && legacyState.blockers[0].linkOn, 'legacy items without link preference default on');
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
         const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
         // v2 form: JSON keys stored as objects.
