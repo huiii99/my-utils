@@ -74,7 +74,7 @@
         .task-table input, .task-table textarea { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .task-table textarea { font-family: inherit; resize: vertical; field-sizing: content; min-height: 1.5em; overflow: hidden; }
         /* Reference link toggle + input */
-        .link-toggle { height: 30px; width: 34px; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #6e7681; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        .link-toggle { height: 30px; width: auto; padding: 0 8px; border: 1px solid var(--border); border-radius: 4px; background: #0d1117; color: #6e7681; font-size: 12px; cursor: pointer; flex-shrink: 0; }
         .link-toggle:hover { background: #1c2128; color: #c9d1d9; }
         .link-toggle.on { background: #1f6feb33; border-color: #1f6feb66; color: #58a6ff; }
         .link-row td { background: #11151c; }
@@ -475,7 +475,7 @@
                     </div>
                 </div>
                 <table class="task-table">
-                    <thead><tr><th style="width: 25%;">Title / Ticket</th><th style="width: 50%;">Description</th><th style="width: 15%;">Status</th><th style="width: 10%;">Action</th></tr></thead>
+                    <thead><tr><th style="width: 25%;">Title / Ticket</th><th style="width: 42%;">Description</th><th style="width: 13%;">Status</th><th style="width: 20%;">Action</th></tr></thead>
                     <tbody>
             `;
 
@@ -496,7 +496,8 @@
                             </td>
                             <td>
                                 <div class="action-cell-wrap">
-                                    <button class="link-toggle ${t.linkOn?'on':''}" title="${t.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('task','${day}',${i})">🔗</button>
+                                    <button class="link-toggle ${t.linkOn?'on':''}" title="${t.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('task','${day}',${i})">Link</button>
+                                    <button class="link-toggle ${t.reviewOn?'on':''}" title="${t.reviewOn?'Remove pending review':'Mark as pending review (PR/GH/Work Item) and add reviewer(s)'}" onclick="toggleReview('${day}',${i})">Review</button>
                                     <button class="btn btn-danger" style="flex:1; height:30px; padding:0 8px; font-size:12px;" onclick="deleteTask('${day}',${i})">Delete</button>
                                 </div>
                             </td>
@@ -506,6 +507,14 @@
                                 <div class="link-field">
                                     <label>🔗 Reference link</label>
                                     <input type="url" onchange="updateTask('${day}',${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(t.link || '')}">
+                                </div>
+                            </td></tr>`;
+                        }
+                        if (t.reviewOn) {
+                            html += `<tr class="link-row"><td colspan="4" style="padding:8px 12px;">
+                                <div class="link-field">
+                                    <label>👀 Pending review by</label>
+                                    <input type="text" onchange="updateTask('${day}',${i},'reviewers',this.value)" placeholder="Reviewer name(s), e.g. Alice, Bob" value="${escapeHtml(t.reviewers || '')}">
                                 </div>
                             </td></tr>`;
                         }
@@ -546,7 +555,7 @@
                 </td>
                 <td>
                     <div class="action-cell-wrap">
-                        <button class="link-toggle ${p.linkOn?'on':''}" title="${p.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('plan',${i})">🔗</button>
+                        <button class="link-toggle ${p.linkOn?'on':''}" title="${p.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('plan',${i})">Link</button>
                         <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deletePlan(${i})">Delete</button>
                     </div>
                 </td>
@@ -569,7 +578,7 @@
                 <td><textarea rows="1" onchange="updateBlocker(${i},'unblock',this.value)" placeholder="e.g. Escalate to manager">${escapeHtml(b.unblock)}</textarea></td>
                 <td>
                     <div class="action-cell-wrap">
-                        <button class="link-toggle ${b.linkOn?'on':''}" title="${b.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('blocker',${i})">🔗</button>
+                        <button class="link-toggle ${b.linkOn?'on':''}" title="${b.linkOn?'Remove reference link':'Attach reference link'}" onclick="toggleLink('blocker',${i})">Link</button>
                         <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteBlocker(${i})">Delete</button>
                     </div>
                 </td>
@@ -610,7 +619,7 @@
         if(!state.tasks[currentDay]) state.tasks[currentDay] = [];
         unfinished.forEach(t => {
             if(!state.tasks[currentDay].some(existTask => existTask.id === t.id)) {
-                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', linkOn: !!t.linkOn });
+                state.tasks[currentDay].push({ id: t.id, title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', linkOn: !!t.linkOn, reviewers: t.reviewers || '', reviewOn: !!t.reviewOn });
             }
         });
         saveState(); renderTracker();
@@ -639,6 +648,7 @@
         item.linkOn = !item.linkOn;
         saveState(); renderTracker();
     }
+    function toggleReview(d, i) { const t = state.tasks[d][i]; t.reviewOn = !t.reviewOn; saveState(); renderTracker(); }
     function clearAllData() { if(confirm("Clear all logs?")) { state.tasks={'Monday':[],'Tuesday':[],'Wednesday':[],'Thursday':[],'Friday':[]}; state.plans=[]; state.achievement=''; state.blockers=[]; state.notes=[]; state.holidays={'Monday':false,'Tuesday':false,'Wednesday':false,'Thursday':false,'Friday':false}; saveState(); renderTracker(); } }
 
     function validateConfiguration() {
@@ -726,12 +736,13 @@
                     const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
                     let dv = dateTag || d;
                     if (!taskMap.has(mapKey)) {
-                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', dates: [dv] });
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', reviewers: t.reviewOn ? (t.reviewers || '') : '', dates: [dv] });
                     } else {
                         let existing = taskMap.get(mapKey);
                         existing.status = t.status; existing.title = t.title;
                         existing.blockerReason = t.blockerReason || ''; existing.blockerUnblock = t.blockerUnblock || '';
                         existing.link = (t.linkOn && t.link) ? t.link : existing.link;
+                        existing.reviewers = t.reviewOn ? (t.reviewers || '') : '';
                         if (!existing.dates.includes(dv)) existing.dates.push(dv);
                     }
                 });
@@ -740,7 +751,7 @@
         let doneTasks = [], progTasks = [], blockTasks = [];
         taskMap.forEach(t => {
             let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
-            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '' };
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', reviewers: t.reviewers || '' };
             if (t.status === 'done') doneTasks.push(compiled);
             else if (t.status === 'blocked') blockTasks.push(compiled);
             else if (t.status === 'progress') progTasks.push(compiled);
@@ -775,6 +786,7 @@
                 g.item.title = t.title;
                 g.item.desc = t.desc;
                 if (!g.item.link && t.link) g.item.link = t.link;
+                g.item.reviewers = t.reviewers || '';
                 if (t.blockerReason && t.blockerReason.trim()) g.item.blockerReason = t.blockerReason;
                 if (t.blockerUnblock && t.blockerUnblock.trim()) g.item.blockerUnblock = t.blockerUnblock;
                 g.item.dateTag = unionDateTag(g.item.dateTag, t.dateTag);
@@ -905,6 +917,20 @@
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
             mergedProgTasks.forEach(t => {
                 s += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
+            });
+            s += `</td></tr></table>`;
+            sections.push(s);
+        }
+
+        // 2b. Pending Review (weekly only) — tasks with reviewer name(s) filled in
+        const reviewItems = meta.showPlans ? [...mergedDoneTasks, ...mergedProgTasks, ...mergedBlockTasks].filter(t => (t.reviewers || '').trim()) : [];
+        if (reviewItems.length) {
+            let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
+                `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
+                buildSectionHeader('#fff4ce', '#ff8c00', '◷', 'PR/GH/Work Item Pending Review') +
+                `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
+            reviewItems.forEach(t => {
+                s += buildTaskItem('#fff4ce', '#ff8c00', '◷', Object.assign({}, t, { desc: `Reviewer(s): ${t.reviewers.trim()}` }), '#fff4ce', '#ff8c00', 'In Review');
             });
             s += `</td></tr></table>`;
             sections.push(s);
@@ -1128,6 +1154,10 @@
             const weeklyReport = buildFinalReportContent();
             assert(weeklyReport.includes('Weekly Work Report'), 'weekly tracker generates a weekly work report');
             assert(weeklyReport.includes('3 Aug - 7 Aug · 2026'), 'generated weekly work report includes the full week range');
+            assert(!weeklyReport.includes('Pending Review'), 'pending review section hidden when no reviewers');
+            state.tasks.Monday.push({ id: 'report-2', title: 'PR #42', desc: 'feature', status: 'progress', link: '', linkOn: false, reviewers: 'Alice, Bob', reviewOn: true });
+            const reviewReport = buildFinalReportContent();
+            assert(reviewReport.includes('PR/GH/Work Item Pending Review') && reviewReport.includes('Reviewer(s): Alice, Bob'), 'pending review section lists reviewers');
             state = originalState;
             Object.keys(originalConfig).forEach(id => document.getElementById(id).value = originalConfig[id]);
         } else {

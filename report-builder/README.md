@@ -21,6 +21,7 @@ A pair of work trackers that generate formatted reports ready to paste into an e
 - Data persists in `localStorage` across sessions
 - **Backup / Restore** — since data lives in browser `localStorage` (lost if you clear cache), use **⬇ Backup** to download a `.json` snapshot of everything (tasks, week history, and config), and **⬆ Restore** to load it back on any browser/machine; weekly backup filenames use the selected Monday-Friday date range
 - New weekly tasks, blockers, and next-week plans show their optional **Reference link** field by default
+- Click a task's **Review** button to reveal a **Pending review by** field (independent of the reference link); tasks with reviewer name(s) appear in the weekly report's "PR/GH/Work Item Pending Review" section
 
 ## Usage
 
