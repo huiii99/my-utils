@@ -25,6 +25,8 @@ A pair of work trackers that generate formatted reports ready to paste into an e
 
 ## Usage
 
+From the main app, select **Weekly Work Tracker**. Its embedded view fills the viewport height; longer content scrolls inside the tracker.
+
 Open `weekly_tracker.html` in your browser:
 
 ```
