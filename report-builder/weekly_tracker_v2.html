@@ -849,7 +849,7 @@
         }
 
         // Helper: build a task item row with icon + content + badge
-        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText) {
+        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText, reviewers = '') {
             return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom:1px solid #f3f4f6; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr>` +
                 `<td width="44" valign="top" style="padding:12px 0 12px 20px;">` +
@@ -858,6 +858,7 @@
                 `<td valign="top" style="padding:12px 12px; text-align:left;">` +
                 `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}${refLink(t.link)}</div>` +
                 `<div style="font-size:13px; color:#616161; margin-top:2px;">${escapeHtml(t.desc)}</div>` +
+                (reviewers.trim() ? `<div style="font-size:13px; color:#616161; margin-top:2px;">Reviewer(s): ${escapeHtml(reviewers.trim())}</div>` : '') +
                 // `<div style="font-size:11px; color:#9ca3af; margin-top:4px;">📅 ${escapeHtml(t.dateTag)}</div>` +
                 `</td>` +
                 `<td width="100" valign="top" style="padding:12px 20px 12px 0; text-align:right; white-space:nowrap;">` +
@@ -935,7 +936,7 @@
                 buildSectionHeader('#fff4ce', '#ff8c00', '◷', 'PR/GH/Work Item Pending Review') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
             reviewItems.forEach(t => {
-                s += buildTaskItem('#fff4ce', '#ff8c00', '◷', Object.assign({}, t, { desc: t.reviewers.trim() ? `Reviewer(s): ${t.reviewers.trim()}` : '' }), '#fff4ce', '#ff8c00', 'In Review');
+                s += buildTaskItem('#fff4ce', '#ff8c00', '◷', t, '#fff4ce', '#ff8c00', 'In Review', t.reviewers);
             });
             s += `</td></tr></table>`;
             sections.push(s);
@@ -1173,11 +1174,13 @@
             ];
             ['done', 'progress'].forEach(status => {
                 ['Alice, Bob', '', '   '].forEach(reviewers => {
-                    state.tasks.Monday = [...ordinaryTasks, { id: 'selected', title: 'Selected review task', desc: 'feature', status, reviewOn: true, reviewers, linkOn: true, link: 'https://example.com/review' }];
+                    state.tasks.Monday = [...ordinaryTasks, { id: 'selected', title: 'Selected review task', desc: 'Review feature <details> & checks', status, reviewOn: true, reviewers, linkOn: true, link: 'https://example.com/review' }];
                     const beforeReport = JSON.stringify(state);
                     const html = buildFinalReportContent();
                     const reviewText = sectionText(html, reviewHeading);
                     assert(reviewText.split('Selected review task').length === 2, 'selected task appears exactly once in pending review');
+                    assert(reviewText.includes('Review feature <details> & checks'), 'pending review preserves task description with or without reviewer names');
+                    assert(html.includes('Review feature &lt;details&gt; &amp; checks'), 'pending review escapes task description');
                     assert(!sectionText(html, 'Completed Tasks').includes('Selected review task') && !sectionText(html, 'In Progress').includes('Selected review task'), 'selected task is excluded from both status sections');
                     assert(sectionText(html, 'Completed Tasks').includes('Ordinary completed task') && sectionText(html, 'In Progress').includes('Ordinary active task'), 'unselected tasks remain in their status sections');
                     assert(reviewers.trim() ? reviewText.includes('Reviewer(s): Alice, Bob') : !reviewText.includes('Reviewer(s):'), 'reviewer names are optional without an empty label');
