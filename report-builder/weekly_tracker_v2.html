@@ -736,12 +736,13 @@
                     const mapKey = (keyByTitle ? t.title.trim() : t.id) + '||' + t.desc.trim();
                     let dv = dateTag || d;
                     if (!taskMap.has(mapKey)) {
-                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', reviewers: t.reviewOn ? (t.reviewers || '') : '', dates: [dv] });
+                        taskMap.set(mapKey, { title: t.title, desc: t.desc, status: t.status, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: (t.linkOn && t.link) ? t.link : '', reviewOn: !!t.reviewOn, reviewers: t.reviewOn ? (t.reviewers || '') : '', dates: [dv] });
                     } else {
                         let existing = taskMap.get(mapKey);
                         existing.status = t.status; existing.title = t.title;
                         existing.blockerReason = t.blockerReason || ''; existing.blockerUnblock = t.blockerUnblock || '';
                         existing.link = (t.linkOn && t.link) ? t.link : existing.link;
+                        existing.reviewOn = !!t.reviewOn;
                         existing.reviewers = t.reviewOn ? (t.reviewers || '') : '';
                         if (!existing.dates.includes(dv)) existing.dates.push(dv);
                     }
@@ -751,7 +752,7 @@
         let doneTasks = [], progTasks = [], blockTasks = [];
         taskMap.forEach(t => {
             let finalDateStr = t.dates.length === 1 ? t.dates[0] : `${t.dates[0]} - ${t.dates[t.dates.length - 1]}`;
-            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', reviewers: t.reviewers || '' };
+            let compiled = { title: t.title, desc: t.desc, dateTag: finalDateStr, blockerReason: t.blockerReason || '', blockerUnblock: t.blockerUnblock || '', link: t.link || '', reviewOn: t.reviewOn, reviewers: t.reviewers || '' };
             if (t.status === 'done') doneTasks.push(compiled);
             else if (t.status === 'blocked') blockTasks.push(compiled);
             else if (t.status === 'progress') progTasks.push(compiled);
@@ -786,6 +787,7 @@
                 g.item.title = t.title;
                 g.item.desc = t.desc;
                 if (!g.item.link && t.link) g.item.link = t.link;
+                g.item.reviewOn = !!t.reviewOn;
                 g.item.reviewers = t.reviewers || '';
                 if (t.blockerReason && t.blockerReason.trim()) g.item.blockerReason = t.blockerReason;
                 if (t.blockerUnblock && t.blockerUnblock.trim()) g.item.blockerUnblock = t.blockerUnblock;
@@ -821,6 +823,10 @@
         const mergedDoneTasks = mergeByTitle(doneTasks);
         const mergedProgTasks = mergeByTitle(progTasks);
         const mergedBlockTasks = mergeByTitle(blockTasks);
+        const isWeeklyReport = scope === 'weekly';
+        const reviewItems = isWeeklyReport ? [...mergedDoneTasks, ...mergedProgTasks, ...mergedBlockTasks].filter(t => t.reviewOn) : [];
+        const displayDoneTasks = isWeeklyReport ? mergedDoneTasks.filter(t => !t.reviewOn) : mergedDoneTasks;
+        const displayProgTasks = isWeeklyReport ? mergedProgTasks.filter(t => !t.reviewOn) : mergedProgTasks;
 
         // Outlook-compatible HTML: bgcolor on <td>, background-color in inline CSS, no flexbox
         // Helper: build a section header row with icon + title
@@ -843,7 +849,7 @@
         }
 
         // Helper: build a task item row with icon + content + badge
-        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText) {
+        function buildTaskItem(iconBg, iconColor, icon, t, badgeBg, badgeColor, badgeText, reviewers = '') {
             return `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom:1px solid #f3f4f6; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr>` +
                 `<td width="44" valign="top" style="padding:12px 0 12px 20px;">` +
@@ -852,6 +858,7 @@
                 `<td valign="top" style="padding:12px 12px; text-align:left;">` +
                 `<div style="font-size:14px; font-weight:500; color:#1a1a1a;">${escapeHtml(t.title)}${refLink(t.link)}</div>` +
                 `<div style="font-size:13px; color:#616161; margin-top:2px;">${escapeHtml(t.desc)}</div>` +
+                (reviewers.trim() ? `<div style="font-size:13px; color:#616161; margin-top:2px;">Reviewer(s): ${escapeHtml(reviewers.trim())}</div>` : '') +
                 // `<div style="font-size:11px; color:#9ca3af; margin-top:4px;">📅 ${escapeHtml(t.dateTag)}</div>` +
                 `</td>` +
                 `<td width="100" valign="top" style="padding:12px 20px 12px 0; text-align:right; white-space:nowrap;">` +
@@ -897,12 +904,12 @@
         const sections = [];
 
         // 1. Completed Tasks
-        if (mergedDoneTasks.length) {
+        if (displayDoneTasks.length) {
             let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#dff6dd', '#107c10', '✓', 'Completed Tasks') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
-            mergedDoneTasks.forEach(t => {
+            displayDoneTasks.forEach(t => {
                 s += buildTaskItem('#dff6dd', '#107c10', '✓', t, '#dff6dd', '#107c10', 'Done');
             });
             s += `</td></tr></table>`;
@@ -910,27 +917,26 @@
         }
 
         // 2. In Progress
-        if (mergedProgTasks.length) {
+        if (displayProgTasks.length) {
             let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#deecf9', '#0078d4', '↻', 'In Progress') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
-            mergedProgTasks.forEach(t => {
+            displayProgTasks.forEach(t => {
                 s += buildTaskItem('#deecf9', '#0078d4', '↻', t, '#deecf9', '#0078d4', 'In Progress');
             });
             s += `</td></tr></table>`;
             sections.push(s);
         }
 
-        // 2b. Pending Review (weekly only) — tasks with reviewer name(s) filled in
-        const reviewItems = meta.showPlans ? [...mergedDoneTasks, ...mergedProgTasks, ...mergedBlockTasks].filter(t => (t.reviewers || '').trim()) : [];
+        // 2b. Pending Review (weekly only)
         if (reviewItems.length) {
             let s = `<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius:10px; border:1px solid #e5e7eb; font-family:'Segoe UI',-apple-system,sans-serif;">` +
                 `<tr><td bgcolor="#ffffff" style="background-color:#ffffff; border-bottom:1px solid #e5e7eb;">` +
                 buildSectionHeader('#fff4ce', '#ff8c00', '◷', 'PR/GH/Work Item Pending Review') +
                 `</td></tr><tr><td bgcolor="#ffffff" style="background-color:#ffffff;">`;
             reviewItems.forEach(t => {
-                s += buildTaskItem('#fff4ce', '#ff8c00', '◷', Object.assign({}, t, { desc: `Reviewer(s): ${t.reviewers.trim()}` }), '#fff4ce', '#ff8c00', 'In Review');
+                s += buildTaskItem('#fff4ce', '#ff8c00', '◷', t, '#fff4ce', '#ff8c00', 'In Review', t.reviewers);
             });
             s += `</td></tr></table>`;
             sections.push(s);
@@ -1142,7 +1148,7 @@
             assert(weeklyAgg.doneTasks[0].dateTag === '3 Aug - 7 Aug · 2026', 'weekly tracker report uses the full week range');
             const originalState = state;
             const originalConfig = {};
-            ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week'].forEach(id => {
+            ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week', 'report-scope'].forEach(id => {
                 originalConfig[id] = document.getElementById(id).value;
             });
             state = emptyWeek();
@@ -1151,13 +1157,74 @@
             document.getElementById('cfg-email').value = 'selftest@example.com';
             document.getElementById('cfg-dept').value = 'Engineering';
             document.getElementById('cfg-week').value = 'Week of 3 Aug - 7 Aug · 2026';
+            document.getElementById('report-scope').value = 'weekly';
             const weeklyReport = buildFinalReportContent();
             assert(weeklyReport.includes('Weekly Work Report'), 'weekly tracker generates a weekly work report');
             assert(weeklyReport.includes('3 Aug - 7 Aug · 2026'), 'generated weekly work report includes the full week range');
-            assert(!weeklyReport.includes('Pending Review'), 'pending review section hidden when no reviewers');
-            state.tasks.Monday.push({ id: 'report-2', title: 'PR #42', desc: 'feature', status: 'progress', link: '', linkOn: false, reviewers: 'Alice, Bob', reviewOn: true });
-            const reviewReport = buildFinalReportContent();
-            assert(reviewReport.includes('PR/GH/Work Item Pending Review') && reviewReport.includes('Reviewer(s): Alice, Bob'), 'pending review section lists reviewers');
+            assert(!weeklyReport.includes('Pending Review'), 'pending review section hidden for legacy tasks without review selection');
+            const sectionText = (html, heading) => {
+                const report = new DOMParser().parseFromString(html, 'text/html');
+                const header = Array.from(report.querySelectorAll('td')).find(td => td.textContent === heading);
+                return header ? header.closest('table').parentElement.closest('table').textContent : '';
+            };
+            const reviewHeading = 'PR/GH/Work Item Pending Review';
+            const ordinaryTasks = [
+                { id: 'ordinary-done', title: 'Ordinary completed task', desc: 'summary', status: 'done' },
+                { id: 'ordinary-progress', title: 'Ordinary active task', desc: 'summary', status: 'progress' }
+            ];
+            ['done', 'progress'].forEach(status => {
+                ['Alice, Bob', '', '   '].forEach(reviewers => {
+                    state.tasks.Monday = [...ordinaryTasks, { id: 'selected', title: 'Selected review task', desc: 'Review feature <details> & checks', status, reviewOn: true, reviewers, linkOn: true, link: 'https://example.com/review' }];
+                    const beforeReport = JSON.stringify(state);
+                    const html = buildFinalReportContent();
+                    const reviewText = sectionText(html, reviewHeading);
+                    assert(reviewText.split('Selected review task').length === 2, 'selected task appears exactly once in pending review');
+                    assert(reviewText.includes('Review feature <details> & checks'), 'pending review preserves task description with or without reviewer names');
+                    assert(html.includes('Review feature &lt;details&gt; &amp; checks'), 'pending review escapes task description');
+                    assert(!sectionText(html, 'Completed Tasks').includes('Selected review task') && !sectionText(html, 'In Progress').includes('Selected review task'), 'selected task is excluded from both status sections');
+                    assert(sectionText(html, 'Completed Tasks').includes('Ordinary completed task') && sectionText(html, 'In Progress').includes('Ordinary active task'), 'unselected tasks remain in their status sections');
+                    assert(reviewers.trim() ? reviewText.includes('Reviewer(s): Alice, Bob') : !reviewText.includes('Reviewer(s):'), 'reviewer names are optional without an empty label');
+                    assert(html.includes('href="https://example.com/review"') && reviewText.includes('In Review'), 'pending review preserves reference link and badge');
+                    assert(JSON.stringify(state) === beforeReport, 'report generation does not mutate task state');
+                });
+            });
+            state.tasks.Monday[2].reviewOn = false;
+            state.tasks.Monday[2].reviewers = 'Retained reviewer';
+            const clearedReviewReport = buildFinalReportContent();
+            assert(sectionText(clearedReviewReport, 'In Progress').includes('Selected review task') && !sectionText(clearedReviewReport, reviewHeading), 'turning review off restores status placement despite retained reviewer text');
+            state.tasks.Monday = [
+                { id: 'review-done', title: 'Completed awaiting review', desc: 'feature', status: 'done', reviewOn: true, reviewers: '' },
+                { id: 'review-progress', title: 'Active awaiting review', desc: 'feature', status: 'progress', reviewOn: true, reviewers: '   ' }
+            ];
+            const onlyReviewReport = buildFinalReportContent();
+            assert(sectionText(onlyReviewReport, reviewHeading).includes('Completed awaiting review') && sectionText(onlyReviewReport, reviewHeading).includes('Active awaiting review'), 'review-only report retains all selected tasks');
+            assert(!sectionText(onlyReviewReport, 'Completed Tasks') && !sectionText(onlyReviewReport, 'In Progress') && !onlyReviewReport.includes('Nothing to report'), 'review-only report hides empty status sections without empty-report fallback');
+            const quarterlyOption = new Option('Quarterly Review', 'quarterly');
+            document.getElementById('report-scope').add(quarterlyOption);
+            ['monthly', 'quarterly'].forEach(scope => {
+                document.getElementById('report-scope').value = scope;
+                const html = buildFinalReportContent();
+                assert(sectionText(html, 'Completed Tasks').includes('Completed awaiting review') && sectionText(html, 'In Progress').includes('Active awaiting review'), 'non-weekly scope preserves selected tasks in status sections');
+                assert(!sectionText(html, reviewHeading), 'non-weekly scope has no pending review section');
+            });
+            quarterlyOption.remove();
+            document.getElementById('report-scope').value = 'weekly';
+            state.tasks.Monday = [{ id: 'review-blocked', title: 'Blocked awaiting review', desc: 'feature', status: 'blocked', reviewOn: true, reviewers: 'Alice', blockerReason: 'Missing approval', blockerUnblock: 'Ask owner' }];
+            const blockedReviewReport = buildFinalReportContent();
+            const blockerText = sectionText(blockedReviewReport, 'Blockers & Risks');
+            assert(blockerText.includes('Blocked awaiting review') && blockerText.includes('Missing approval') && blockerText.includes('Ask owner'), 'selected blocked task retains blocker details');
+            assert(sectionText(blockedReviewReport, reviewHeading).includes('Blocked awaiting review'), 'selected blocked task also appears in pending review');
+            [true, false].forEach(reviewOn => {
+                const reviewSnapshots = [
+                    { week: 'Week of 3 Aug - 7 Aug · 2026', tasks: { Monday: [{ id: 'first', title: 'Recurring review task', desc: 'feature', status: 'progress', reviewOn: !reviewOn, reviewers: 'Earlier reviewer' }] } },
+                    { week: 'Week of 10 Aug - 14 Aug · 2026', tasks: { Monday: [{ id: 'latest', title: 'Recurring review task', desc: 'feature', status: 'progress', reviewOn, reviewers: 'Latest reviewer' }] } }
+                ];
+                const aggregated = aggregateTasks(reviewSnapshots, true).progTasks;
+                assert(aggregated.length === 1 && aggregated[0].reviewOn === reviewOn && aggregated[0].reviewers === (reviewOn ? 'Latest reviewer' : ''), 'aggregation keeps latest review selection and matching reviewer metadata');
+                reviewSnapshots[1].tasks.Monday[0].desc = 'updated feature';
+                const merged = mergeByTitle(aggregateTasks(reviewSnapshots, false).progTasks);
+                assert(merged.length === 1 && merged[0].reviewOn === reviewOn && merged[0].reviewers === (reviewOn ? 'Latest reviewer' : ''), 'title merge keeps latest review selection and matching reviewer metadata');
+            });
             state = originalState;
             Object.keys(originalConfig).forEach(id => document.getElementById(id).value = originalConfig[id]);
         } else {
