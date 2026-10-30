@@ -19,16 +19,16 @@
         .container { max-width: 1000px; margin: 0 auto; background: #161b22; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         
         /* Config */
-        .config-section { background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-        .config-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
-        .config-grid .form-group { grid-column: span 3; }
-        @media (max-width: 720px) { .config-grid .form-group { grid-column: span 12 !important; } }
+        .config-section { padding: 10px 6px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+        .config-grid { display: grid; gap: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; color: #8b949e; margin-bottom: 4px; }
         .form-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .required-dot::after { content: " *"; color: var(--danger); }
         
         /* Layout Buttons */
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .tracker-bar { flex-wrap: wrap; gap: 12px; }
+        .tracker-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 100%; }
         .btn { padding: 8px 16px; border: none; border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--ms-blue); color: #0d1117; }
         .btn-primary:hover { background: var(--ms-dark); color: #fff; }
@@ -42,17 +42,22 @@
         .btn-warning:hover { background: #bb800959; color: #e3b341; }
 
         /* Settings gear menu (native <details>) */
-        .settings-menu { position: relative; }
-        .settings-menu > summary { list-style: none; padding: 8px 12px; cursor: pointer; user-select: none; }
+        .settings-menu { position: fixed; right: 20px; bottom: 20px; z-index: 100; }
+        .settings-menu > summary { list-style: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; user-select: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .settings-menu > summary::-webkit-details-marker { display: none; }
-        .settings-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; background: #1c2128; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 6px; min-width: 190px; display: flex; flex-direction: column; gap: 2px; }
-        .settings-item { text-align: left; padding: 8px 12px; border: none; border-radius: 6px; background: transparent; color: #c9d1d9; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
-        .settings-item:hover { background: #30363d; }
-        .settings-item.danger { color: var(--danger); }
-        .settings-item.danger:hover { background: #da363433; color: #ff7b72; }
+        .settings-panel { position: absolute; right: 0; bottom: calc(100% + 8px); background: #1c2128; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 10px; width: 320px; max-width: calc(100vw - 40px); max-height: calc(100dvh - 92px); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .settings-item { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #161b22; color: #c9d1d9; font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer; }
+        .settings-item:hover { background: #21262d; border-color: var(--ms-blue); }
+        .settings-item:focus-visible { outline: 2px solid var(--ms-blue); outline-offset: 2px; }
+        .settings-icon { display: grid; place-items: center; flex: 0 0 32px; height: 32px; border-radius: 6px; background: #1f6feb26; color: var(--ms-blue); font-size: 18px; }
+        .settings-item small { display: block; margin-top: 2px; color: #8b949e; font-size: 11px; font-weight: 400; }
+        .settings-item.danger { color: var(--danger); border-color: #f8514940; background: #f851490d; }
+        .settings-item.danger .settings-icon { color: inherit; background: #f851491a; }
+        .settings-item.danger:hover { background: #da363433; border-color: var(--danger); color: #ff7b72; }
+        .settings-item.danger:focus-visible { outline-color: var(--danger); }
 
         /* Week range stepper */
-        .week-stepper { display: flex; align-items: center; gap: 6px; background: #0d1117; border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; }
+        .week-stepper { display: flex; align-items: center; gap: 6px; background: #0d1117; border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; min-width: 0; max-width: 100%; }
         .week-nav { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px; background: #1c2128; color: var(--ms-blue); font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0; box-sizing: border-box; }
         .week-nav:hover { background: #30363d; color: #fff; }
         .week-label { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: #c9d1d9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -102,36 +107,43 @@
 <body>
 
 <div class="container">
-    <div class="config-section">
-        <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">👤 User Configuration (Required)</div>
-        <div class="config-grid">
-            <div class="form-group"><label class="required-dot">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
-            <div class="form-group"><label class="required-dot">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
-            <div class="form-group fg-dept"><label class="required-dot">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
-            <div class="form-group fg-week"><label class="required-dot">Week Range</label>
-                <div class="week-stepper">
-                    <button type="button" class="week-nav" onclick="stepWeek(-1)" title="Previous week">‹</button>
-                    <span id="cfg-week-label" class="week-label">—</span>
-                    <button type="button" class="week-nav" onclick="stepWeek(1)" title="Next week">›</button>
-                    <button type="button" class="week-today" onclick="goCurrentWeek()" title="Jump to current week">Today</button>
-                    <input type="hidden" id="cfg-week">
+    <details class="settings-menu" id="user-settings">
+        <summary class="btn btn-secondary" title="User configuration and settings" aria-label="User configuration and settings">⚙️</summary>
+        <div class="settings-panel">
+            <div class="config-section">
+                <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">👤 User Configuration (Required)</div>
+                <div class="config-grid">
+                    <div class="form-group"><label class="required-dot" for="cfg-name">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
+                    <div class="form-group"><label class="required-dot" for="cfg-email">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
+                    <div class="form-group"><label class="required-dot" for="cfg-dept">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
                 </div>
             </div>
+            <button type="button" class="settings-item" onclick="exportBackup(); this.closest('details').open=false">
+                <span class="settings-icon" aria-hidden="true">⬇</span>
+                <span>Backup data<small>Download a JSON copy</small></span>
+            </button>
+            <button type="button" class="settings-item" onclick="document.getElementById('import-file').click(); this.closest('details').open=false">
+                <span class="settings-icon" aria-hidden="true">⬆</span>
+                <span>Restore data<small>Import a saved JSON backup</small></span>
+            </button>
+            <button type="button" class="settings-item danger" onclick="clearAllData(); this.closest('details').open=false">
+                <span class="settings-icon" aria-hidden="true">🗑</span>
+                <span>Clear all records<small>Remove this week's records</small></span>
+            </button>
         </div>
-    </div>
+    </details>
+    <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
 
-    <div class="action-bar">
+    <div class="action-bar tracker-bar">
         <h2 id="tracker-title">📅 Daily Work Tracker</h2>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <details class="settings-menu">
-                <summary class="btn btn-secondary" title="Settings">⚙️</summary>
-                <div class="settings-panel">
-                    <button class="settings-item" onclick="exportBackup(); this.closest('details').open=false">⬇ Backup data</button>
-                    <button class="settings-item" onclick="document.getElementById('import-file').click(); this.closest('details').open=false">⬆ Restore data</button>
-                    <button class="settings-item danger" onclick="clearAllData(); this.closest('details').open=false">🗑 Clear all records</button>
-                </div>
-            </details>
-            <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importBackup(this)">
+        <div class="tracker-actions">
+            <div class="week-stepper" role="group" aria-label="Week Range">
+                <button type="button" class="week-nav" onclick="stepWeek(-1)" title="Previous week">‹</button>
+                <span id="cfg-week-label" class="week-label">—</span>
+                <button type="button" class="week-nav" onclick="stepWeek(1)" title="Next week">›</button>
+                <button type="button" class="week-today" onclick="goCurrentWeek()" title="Jump to current week">Today</button>
+                <input type="hidden" id="cfg-week">
+            </div>
             <select id="report-scope" style="padding:8px; border:1px solid var(--border); border-radius:4px; font-size:13px; background:#0d1117; color:#c9d1d9; margin-right:6px;">
                 <option value="weekly">Weekly Report</option>
                 <option value="monthly">Monthly Report</option>
@@ -262,6 +274,12 @@
         if (Object.keys(loadHistory()).length === 0) saveState();
         renderTracker();
     };
+
+    // Capture first so required-field validation can reopen settings.
+    document.addEventListener('click', event => {
+        const settings = document.getElementById('user-settings');
+        if (!settings.contains(event.target)) settings.open = false;
+    }, true);
 
     function saveState() {
         localStorage.setItem(STATE_KEY, JSON.stringify(state));
@@ -399,15 +417,15 @@
     function emptyWeek() {
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
-        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: true });
+        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
         return { tasks, plans: [], holidays, achievement: '', blockers: [], notes: [] };
     }
     // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
     function normalizeState(s) {
         if (!s) return s;
-        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = true; }); });
-        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = true; });
-        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = true; });
+        DAYS.forEach(d => { (s.tasks && s.tasks[d] || []).forEach(t => { if (t.link === undefined) t.link = ''; if (t.linkOn === undefined) t.linkOn = false; }); });
+        (s.plans || []).forEach(p => { if (p.link === undefined) p.link = ''; if (p.linkOn === undefined) p.linkOn = false; });
+        (s.blockers || []).forEach(b => { if (b.link === undefined) b.link = ''; if (b.linkOn === undefined) b.linkOn = false; });
         return s;
     }
     // Load the selected week's saved data into state (or an empty week), then render.
@@ -597,7 +615,7 @@
         ntbody.innerHTML = state.notes.length === 0 ? `<tr><td colspan="2" style="color:#9ca3af; text-align:center; padding:12px;">No notes recorded.</td></tr>` : '';
         state.notes.forEach((n, i) => {
             ntbody.innerHTML += `<tr>
-                <td><input type="text" value="${escapeHtml(n.text || '')}" onchange="updateNote(${i},this.value)" placeholder="e.g. I will be off next week"></td>
+                <td><textarea rows="1" onchange="updateNote(${i},this.value)" placeholder="e.g. I will be off next week">${escapeHtml(n.text || '')}</textarea></td>
                 <td>
                     <div class="action-cell-wrap">
                         <button class="btn btn-danger" style="flex:1; padding:4px 8px; font-size:12px;" onclick="deleteNote(${i})">Delete</button>
@@ -625,14 +643,14 @@
         saveState(); renderTracker();
     }
 
-    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:true}); saveState(); renderTracker(); }
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
     function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
     function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
     function updateAchievement(v) { state.achievement = v; saveState(); }
-    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:true}); saveState(); renderTracker(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
     function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
     function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
-    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:true}); saveState(); updatePlan(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
     function addNoteItem() { state.notes.push({text:''}); saveState(); renderTracker(); }
@@ -657,7 +675,10 @@
         const dept = document.getElementById('cfg-dept').value.trim();
         const week = document.getElementById('cfg-week').value.trim();
         if(!name || !email || !dept || !week) {
+            document.getElementById('user-settings').open = true;
             alert("❌ Please fill in all required fields in the 'User Configuration' panel first.");
+            const missing = ['cfg-name', 'cfg-email', 'cfg-dept'].find(id => !document.getElementById(id).value.trim());
+            if (missing) document.getElementById(missing).focus();
             return false;
         }
         return { name, email, dept, week };
@@ -1025,7 +1046,7 @@
             notesList.forEach(n => {
                 s += `<table width="100%" border="0" cellspacing="0" cellpadding="0"><tr>` +
                     `<td width="20" valign="top" style="padding:6px 0; font-size:13px; color:#3b4a57; line-height:1.5;">&bull;</td>` +
-                    `<td valign="top" style="padding:6px 8px; font-size:13px; color:#1a1a1a; text-align:left; line-height:1.5;">${escapeHtml(n.text.trim())}</td>` +
+                    `<td valign="top" style="padding:6px 8px; font-size:13px; color:#1a1a1a; text-align:left; line-height:1.5;">${escapeHtml(n.text.trim()).replace(/\n/g, '<br>')}</td>` +
                     `</tr></table>`;
             });
             s += `</td></tr></table>`;
@@ -1121,8 +1142,18 @@
         const assert = (c, m) => { if (!c) { document.documentElement.dataset.selftest = 'fail'; console.error('SELFTEST FAIL:', m); alert('SELFTEST FAIL: ' + m); throw new Error(m); } };
         assert(document.getElementById('days-container').children.length === TRACKER_PERIODS.length, 'tracker renders the expected number of period cards');
         assert(reportMeta('weekly', 'Week of 3 Aug - 7 Aug · 2026').title === (IS_WEEKLY_TRACKER ? 'Weekly Work Report' : 'Weekly Report'), 'weekly report title matches tracker mode');
-        const configWidths = Array.from(document.querySelectorAll('.config-grid .form-group')).map(el => el.getBoundingClientRect().width);
+        const settings = document.getElementById('user-settings');
+        assert(!settings.open, 'user configuration is collapsed by default');
+        assert(getComputedStyle(settings).position === 'fixed' && getComputedStyle(settings).right === '20px' && getComputedStyle(settings).bottom === '20px', 'settings stay in the bottom-right corner');
+        assert(document.querySelector('.tracker-bar .week-stepper') && !settings.querySelector('#cfg-week'), 'week range is in the action bar, outside settings');
+        settings.querySelector('summary').click();
+        const configWidths = Array.from(settings.querySelectorAll('.form-group')).map(el => el.getBoundingClientRect().width);
+        assert(settings.open && configWidths.every(width => width > 0), 'settings gear reveals user configuration');
         assert(Math.max(...configWidths) - Math.min(...configWidths) < 2, 'configuration fields have consistent widths');
+        document.getElementById('cfg-name').click();
+        assert(settings.open, 'clicking inside settings keeps them open');
+        document.getElementById('tracker-title').click();
+        assert(!settings.open, 'clicking outside settings closes them');
         assert(getComputedStyle(document.querySelector('.week-nav')).display !== 'none', 'week navigation remains available');
         const aug = weekMonday('Week of 3 Aug - 7 Aug · 2026');
         assert(aug && aug.getMonth() === 7 && aug.getFullYear() === 2026, 'weekMonday parses month/year');
@@ -1151,6 +1182,16 @@
             ['cfg-name', 'cfg-email', 'cfg-dept', 'cfg-week', 'report-scope'].forEach(id => {
                 originalConfig[id] = document.getElementById(id).value;
             });
+            const originalAlert = window.alert;
+            try {
+                document.getElementById('cfg-name').value = '';
+                window.alert = () => {};
+                document.querySelector('.tracker-bar .btn-success').click();
+                assert(settings.open && document.activeElement.id === 'cfg-name', 'missing required configuration opens settings and focuses the field after an outside click');
+            } finally {
+                window.alert = originalAlert;
+                settings.open = false;
+            }
             state = emptyWeek();
             state.tasks.Monday = [{ id: 'report-1', title: 'Ship weekly update', desc: 'summary', status: 'done', blockerReason: '', blockerUnblock: '', link: '', linkOn: false }];
             document.getElementById('cfg-name').value = 'Self Test';
@@ -1162,6 +1203,9 @@
             assert(weeklyReport.includes('Weekly Work Report'), 'weekly tracker generates a weekly work report');
             assert(weeklyReport.includes('3 Aug - 7 Aug · 2026'), 'generated weekly work report includes the full week range');
             assert(!weeklyReport.includes('Pending Review'), 'pending review section hidden for legacy tasks without review selection');
+            state.notes = [{ text: 'First line <note>\nSecond line & details' }];
+            assert(buildFinalReportContent().includes('First line &lt;note&gt;<br>Second line &amp; details'), 'report preserves note line breaks and escapes HTML');
+            state.notes = [];
             const sectionText = (html, heading) => {
                 const report = new DOMParser().parseFromString(html, 'text/html');
                 const header = Array.from(report.querySelectorAll('td')).find(td => td.textContent === heading);
@@ -1246,10 +1290,41 @@
         assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
         assert(backupFilename('Week of 21 Sep - 25 Sep · 2026') === 'weekly-work-tracker-backup-2026-09-21-to-2026-09-25.json', 'backup filename uses selected week range');
         const defaultWeek = emptyWeek();
-        assert(defaultWeek.tasks.Monday[0].linkOn === true, 'new week enables reference links by default');
-        const legacyState = { tasks: { Monday: [{ link: '' }] }, plans: [{}], blockers: [{}] };
+        assert(defaultWeek.tasks.Monday[0].linkOn === false, 'new week hides reference links by default');
+        const legacyState = { tasks: { Monday: [{ link: '' }, { linkOn: true }] }, plans: [{}, { linkOn: true }], blockers: [{}, { linkOn: true }] };
         normalizeState(legacyState);
-        assert(legacyState.tasks.Monday[0].linkOn && legacyState.plans[0].linkOn && legacyState.blockers[0].linkOn, 'legacy items without link preference default on');
+        assert(!legacyState.tasks.Monday[0].linkOn && !legacyState.plans[0].linkOn && !legacyState.blockers[0].linkOn, 'legacy items without link preference default off');
+        assert(legacyState.tasks.Monday[1].linkOn && legacyState.plans[1].linkOn && legacyState.blockers[1].linkOn, 'saved link preferences remain unchanged');
+        const savedState = state;
+        const savedBackup = buildBackupBundle();
+        try {
+            state = emptyWeek();
+            addTask('Monday');
+            const taskCard = document.getElementById('days-container');
+            assert(!state.tasks.Monday[1].linkOn && !taskCard.querySelector('.link-row'), 'Add Task leaves reference links hidden');
+            taskCard.querySelectorAll('button[onclick^="toggleLink"]')[1].click();
+            assert(state.tasks.Monday[1].linkOn && taskCard.querySelector('input[type="url"]'), 'clicking Link opens the new task reference field');
+            addBlockerItem();
+            addPlanItem();
+            ['blockers', 'plans'].forEach(kind => {
+                const tbody = document.getElementById(`${kind}-tbody`);
+                assert(!state[kind][0].linkOn && !tbody.querySelector('.link-row'), `new ${kind} hide reference links`);
+                tbody.querySelector('.link-toggle').click();
+                assert(state[kind][0].linkOn && tbody.querySelector('input[type="url"]'), `${kind} links open on click`);
+            });
+            addNoteItem();
+            const note = document.querySelector('#notes-tbody textarea');
+            assert(note, 'notes use a textarea');
+            note.value = 'First line <note>\nSecond line & details';
+            note.dispatchEvent(new Event('change'));
+            assert(JSON.parse(localStorage.getItem(STATE_KEY)).notes[0].text === note.value, 'multiline note is saved unchanged');
+            renderTracker();
+            assert(document.querySelector('#notes-tbody textarea').value === note.value, 'multiline note survives rerendering');
+        } finally {
+            state = savedState;
+            applyBackup(savedBackup);
+            renderTracker();
+        }
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
         const before = {}; BACKUP_KEYS.forEach(k => before[k] = localStorage.getItem(k));
         // v2 form: JSON keys stored as objects.
