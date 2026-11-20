@@ -24,6 +24,14 @@
         .form-group label { display: block; font-size: 12px; font-weight: 600; color: #8b949e; margin-bottom: 4px; }
         .form-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .required-dot::after { content: " *"; color: var(--danger); }
+        .config-defaults { border: 0; border-top: 1px solid var(--border); padding-top: 12px; }
+        .config-defaults legend { font-size: 12px; font-weight: 600; color: #8b949e; padding-right: 6px; }
+        .config-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; margin-top: 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #000; color: #c9d1d9; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .config-toggle[aria-pressed="true"] { background: #238636; border-color: #2ea043; color: #fff; }
+        .config-toggle:hover { border-color: #8b949e; }
+        .config-toggle:focus-visible { outline: 2px solid var(--ms-blue); outline-offset: 2px; }
+        .config-toggle-state { font-size: 11px; font-weight: 400; }
+        .config-hint { color: #8b949e; font-size: 11px; line-height: 1.5; margin-top: 4px; }
         
         /* Layout Buttons */
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -76,6 +84,9 @@
         .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .task-table th { background: #1c2128; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); color: #8b949e; font-weight: 600; }
         .task-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: top; }
+        .task-table .item-start > td, .task-table .item-detail > td { border-bottom: 0; }
+        .task-table .item-start > td { padding-top: 12px; padding-bottom: 12px; }
+        .task-table .item-start:not(:first-child) > td { border-top: 1px solid var(--border); padding-top: 16px; }
         .task-table input, .task-table textarea { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #0d1117; color: #c9d1d9; }
         .task-table textarea { font-family: inherit; resize: vertical; field-sizing: content; min-height: 1.5em; overflow: hidden; }
         /* Reference link toggle + input */
@@ -108,14 +119,25 @@
 
 <div class="container">
     <details class="settings-menu" id="user-settings">
-        <summary class="btn btn-secondary" title="User configuration and settings" aria-label="User configuration and settings">⚙️</summary>
+        <summary class="btn btn-secondary" title="Configuration and settings" aria-label="Configuration and settings">⚙️</summary>
         <div class="settings-panel">
             <div class="config-section">
-                <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">👤 User Configuration (Required)</div>
+                <div style="font-weight:600; margin-bottom:12px; color:var(--ms-dark);">Configuration (Required)</div>
                 <div class="config-grid">
                     <div class="form-group"><label class="required-dot" for="cfg-name">Name</label><input type="text" id="cfg-name" placeholder="e.g. John Doe"></div>
                     <div class="form-group"><label class="required-dot" for="cfg-email">Email</label><input type="text" id="cfg-email" placeholder="e.g. john.doe@company.com"></div>
                     <div class="form-group"><label class="required-dot" for="cfg-dept">Department / Team</label><input type="text" id="cfg-dept" placeholder="e.g. Azure Dev Core"></div>
+                    <fieldset class="config-defaults">
+                        <legend>Defaults for new items</legend>
+                        <button type="button" class="config-toggle" id="cfg-default-link" aria-pressed="false" aria-describedby="cfg-default-link-hint" onclick="updateItemDefault('linkOn', !itemDefaults.linkOn)">
+                            <span>Reference link</span><span class="config-toggle-state" aria-hidden="true">Off</span>
+                        </button>
+                        <p class="config-hint" id="cfg-default-link-hint">Applies to new tasks, plans, and blockers. Saves automatically.</p>
+                        <button type="button" class="config-toggle" id="cfg-default-review" aria-pressed="false" aria-describedby="cfg-default-review-hint" onclick="updateItemDefault('reviewOn', !itemDefaults.reviewOn)">
+                            <span>Pending review</span><span class="config-toggle-state" aria-hidden="true">Off</span>
+                        </button>
+                        <p class="config-hint" id="cfg-default-review-hint">Applies to new tasks only. Saves automatically.</p>
+                    </fieldset>
                 </div>
             </div>
             <button type="button" class="settings-item" onclick="exportBackup(); this.closest('details').open=false">
@@ -229,6 +251,8 @@
     const STATE_KEY = IS_WEEKLY_TRACKER ? 'weekly_state_save_v1' : 'dd_state_save_v3';
     const HISTORY_KEY = IS_WEEKLY_TRACKER ? 'weekly_history_v1' : 'dd_week_history_v1';
     const WEEK_CONFIG_KEY = IS_WEEKLY_TRACKER ? 'weekly-cfg-week' : 'cfg-week';
+    const ITEM_DEFAULTS_KEY = 'weekly-item-defaults-v1';
+    let itemDefaults = loadItemDefaults();
     let state = { 
         tasks: { 'Monday': [], 'Tuesday': [], 'Wednesday': [], 'Thursday': [], 'Friday': [] }, 
         plans: [],
@@ -240,7 +264,33 @@
 
     function generateId() { return '_' + Math.random().toString(36).substr(2, 9); }
 
+    function loadItemDefaults() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(ITEM_DEFAULTS_KEY)) || {};
+            return { linkOn: saved.linkOn === true, reviewOn: saved.reviewOn === true };
+        } catch (e) {
+            return { linkOn: false, reviewOn: false };
+        }
+    }
+    function syncDefaultInputs() {
+        [['cfg-default-link', itemDefaults.linkOn], ['cfg-default-review', itemDefaults.reviewOn]].forEach(([id, enabled]) => {
+            const button = document.getElementById(id);
+            button.setAttribute('aria-pressed', String(enabled));
+            button.querySelector('.config-toggle-state').textContent = enabled ? 'On' : 'Off';
+        });
+    }
+    function updateItemDefault(field, enabled) {
+        itemDefaults[field] = enabled;
+        localStorage.setItem(ITEM_DEFAULTS_KEY, JSON.stringify(itemDefaults));
+        syncDefaultInputs();
+    }
+    function newTask() {
+        return { id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: itemDefaults.linkOn, reviewers: '', reviewOn: itemDefaults.reviewOn };
+    }
+
     window.onload = function() {
+        itemDefaults = loadItemDefaults();
+        syncDefaultInputs();
         document.title = IS_WEEKLY_TRACKER ? 'Weekly Work Tracker & Report Builder' : 'Daily Work Tracker & Report Builder';
         document.getElementById('tracker-title').textContent = IS_WEEKLY_TRACKER ? '📅 Weekly Work Tracker' : '📅 Daily Work Tracker';
         if (IS_WEEKLY_TRACKER) {
@@ -294,10 +344,10 @@
     const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch(e) { return {}; } }
     // Keys that make up a complete backup: current buffer, week history, config fields.
-    const BACKUP_KEYS = [STATE_KEY, HISTORY_KEY, 'cfg-name', 'cfg-email', 'cfg-dept', WEEK_CONFIG_KEY];
+    const BACKUP_KEYS = [STATE_KEY, HISTORY_KEY, 'cfg-name', 'cfg-email', 'cfg-dept', WEEK_CONFIG_KEY, ITEM_DEFAULTS_KEY];
     // These keys hold JSON in localStorage; backups store them as real nested
     // objects (not escaped strings) so the exported file is human-readable.
-    const JSON_BACKUP_KEYS = [STATE_KEY, HISTORY_KEY];
+    const JSON_BACKUP_KEYS = [STATE_KEY, HISTORY_KEY, ITEM_DEFAULTS_KEY];
     function buildBackupBundle() {
         const data = {};
         BACKUP_KEYS.forEach(k => {
@@ -417,7 +467,7 @@
     function emptyWeek() {
         const tasks = {}, holidays = {};
         DAYS.forEach(d => { tasks[d] = []; holidays[d] = false; });
-        tasks['Monday'].push({ id: generateId(), title: '', desc: '', status: 'progress', blockerReason: '', blockerUnblock: '', link: '', linkOn: false });
+        tasks['Monday'].push(newTask());
         return { tasks, plans: [], holidays, achievement: '', blockers: [], notes: [] };
     }
     // Backfill link/linkOn defaults on any items loaded from older saves so old data keeps working.
@@ -502,7 +552,7 @@
                     html += `<tr><td colspan="4" style="color:#9ca3af; text-align:center; padding:12px;">No tasks logged. Click "+ Add Task" to start.</td></tr>`;
                 } else {
                     state.tasks[day].forEach((t, i) => {
-                        html += `<tr>
+                        html += `<tr class="item-start">
                             <td><textarea rows="1" onchange="updateTask('${day}',${i},'title',this.value)" placeholder="e.g. #33263">${escapeHtml(t.title)}</textarea></td>
                             <td><textarea rows="1" onchange="updateTask('${day}',${i},'desc',this.value)" placeholder="Task details...">${escapeHtml(t.desc)}</textarea></td>
                             <td>
@@ -521,7 +571,7 @@
                             </td>
                         </tr>`;
                         if (t.linkOn) {
-                            html += `<tr class="link-row"><td colspan="4" style="padding:8px 12px;">
+                            html += `<tr class="link-row item-detail"><td colspan="4" style="padding:8px 12px;">
                                 <div class="link-field">
                                     <label>🔗 Reference link</label>
                                     <input type="url" onchange="updateTask('${day}',${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(t.link || '')}">
@@ -529,7 +579,7 @@
                             </td></tr>`;
                         }
                         if (t.reviewOn) {
-                            html += `<tr class="link-row"><td colspan="4" style="padding:8px 12px;">
+                            html += `<tr class="link-row item-detail"><td colspan="4" style="padding:8px 12px;">
                                 <div class="link-field">
                                     <label>👀 Pending review by</label>
                                     <input type="text" onchange="updateTask('${day}',${i},'reviewers',this.value)" placeholder="Reviewer name(s), e.g. Alice, Bob" value="${escapeHtml(t.reviewers || '')}">
@@ -537,7 +587,7 @@
                             </td></tr>`;
                         }
                         if (t.status === 'blocked') {
-                            html += `<tr><td colspan="4" style="background:#1c1416; padding:8px 12px;">
+                            html += `<tr class="item-detail"><td colspan="4" style="background:#1c1416; padding:8px 12px;">
                                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                                     <div style="flex:1; min-width:200px;">
                                         <label style="display:block; font-size:11px; color:#f85149; font-weight:600; margin-bottom:4px;">🔒 Blocker reason</label>
@@ -562,7 +612,7 @@
         const tbody = document.getElementById('plans-tbody');
         tbody.innerHTML = state.plans.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No next week plans recorded.</td></tr>` : '';
         state.plans.forEach((p, i) => {
-            tbody.innerHTML += `<tr>
+            tbody.innerHTML += `<tr class="item-start">
                 <td><input type="text" value="${escapeHtml(p.text)}" onchange="updatePlan(${i},'text',this.value)" placeholder="Next week task..."></td>
                 <td>
                     <select onchange="updatePlan(${i},'priority',this.value)" style="width:100%; padding:4px; border-radius:4px; border:1px solid var(--border); background:#0d1117; color:#c9d1d9;">
@@ -579,7 +629,7 @@
                 </td>
             </tr>`;
             if (p.linkOn) {
-                tbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                tbody.innerHTML += `<tr class="link-row item-detail"><td colspan="3" style="padding:8px 12px;">
                     <div class="link-field">
                         <label>🔗 Reference link</label>
                         <input type="url" onchange="updatePlan(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(p.link || '')}">
@@ -591,7 +641,7 @@
         const btbody = document.getElementById('blockers-tbody');
         btbody.innerHTML = state.blockers.length === 0 ? `<tr><td colspan="3" style="color:#9ca3af; text-align:center; padding:12px;">No standalone blockers recorded.</td></tr>` : '';
         state.blockers.forEach((b, i) => {
-            btbody.innerHTML += `<tr>
+            btbody.innerHTML += `<tr class="item-start">
                 <td><textarea rows="1" onchange="updateBlocker(${i},'reason',this.value)" placeholder="e.g. Waiting on vendor SLA">${escapeHtml(b.reason)}</textarea></td>
                 <td><textarea rows="1" onchange="updateBlocker(${i},'unblock',this.value)" placeholder="e.g. Escalate to manager">${escapeHtml(b.unblock)}</textarea></td>
                 <td>
@@ -602,7 +652,7 @@
                 </td>
             </tr>`;
             if (b.linkOn) {
-                btbody.innerHTML += `<tr class="link-row"><td colspan="3" style="padding:8px 12px;">
+                btbody.innerHTML += `<tr class="link-row item-detail"><td colspan="3" style="padding:8px 12px;">
                     <div class="link-field">
                         <label>🔗 Reference link</label>
                         <input type="url" onchange="updateBlocker(${i},'link',this.value)" placeholder="https://... (ticket, PR, doc)" value="${escapeHtml(b.link || '')}">
@@ -614,7 +664,7 @@
         const ntbody = document.getElementById('notes-tbody');
         ntbody.innerHTML = state.notes.length === 0 ? `<tr><td colspan="2" style="color:#9ca3af; text-align:center; padding:12px;">No notes recorded.</td></tr>` : '';
         state.notes.forEach((n, i) => {
-            ntbody.innerHTML += `<tr>
+            ntbody.innerHTML += `<tr class="item-start">
                 <td><textarea rows="1" onchange="updateNote(${i},this.value)" placeholder="e.g. I will be off next week">${escapeHtml(n.text || '')}</textarea></td>
                 <td>
                     <div class="action-cell-wrap">
@@ -643,14 +693,14 @@
         saveState(); renderTracker();
     }
 
-    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push({id: generateId(), title:'', desc:'', status:'progress', blockerReason:'', blockerUnblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function addTask(d) { if(!state.tasks[d]) state.tasks[d]=[]; state.tasks[d].push(newTask()); saveState(); renderTracker(); }
     function updateTask(d, i, f, v) { state.tasks[d][i][f] = v; saveState(); if(f==='status') renderTracker(); }
     function deleteTask(d, i) { state.tasks[d].splice(i, 1); saveState(); renderTracker(); }
     function updateAchievement(v) { state.achievement = v; saveState(); }
-    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:false}); saveState(); renderTracker(); }
+    function addBlockerItem() { state.blockers.push({reason:'', unblock:'', link:'', linkOn:itemDefaults.linkOn}); saveState(); renderTracker(); }
     function updateBlocker(i, f, v) { state.blockers[i][f] = v; saveState(); }
     function deleteBlocker(i) { state.blockers.splice(i, 1); saveState(); renderTracker(); }
-    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:false}); saveState(); updatePlan(); renderTracker(); }
+    function addPlanItem() { state.plans.push({text:'', priority:'High', link:'', linkOn:itemDefaults.linkOn}); saveState(); updatePlan(); renderTracker(); }
     function updatePlan(i, f, v) { if(i!==undefined) state.plans[i][f] = v; saveState(); }
     function deletePlan(i) { state.plans.splice(i, 1); saveState(); renderTracker(); }
     function addNoteItem() { state.notes.push({text:''}); saveState(); renderTracker(); }
@@ -676,7 +726,7 @@
         const week = document.getElementById('cfg-week').value.trim();
         if(!name || !email || !dept || !week) {
             document.getElementById('user-settings').open = true;
-            alert("❌ Please fill in all required fields in the 'User Configuration' panel first.");
+            alert("❌ Please fill in all required fields in the 'Configuration' panel first.");
             const missing = ['cfg-name', 'cfg-email', 'cfg-dept'].find(id => !document.getElementById(id).value.trim());
             if (missing) document.getElementById(missing).focus();
             return false;
@@ -1137,18 +1187,130 @@
             btn.classList.remove('copied');
         }, 2500);
     }
+    function testItemSeparation(assert) {
+        const originalState = state;
+        try {
+            state = emptyWeek();
+            state.tasks.Monday = [
+                { title: 'First task', desc: '', status: 'blocked', linkOn: true, reviewOn: true },
+                { title: 'Second task', desc: '', status: 'progress', linkOn: false, reviewOn: false }
+            ];
+            state.plans = [{ text: 'First plan', priority: 'High', linkOn: true }, { text: 'Second plan', priority: 'Low', linkOn: false }];
+            state.blockers = [{ reason: 'First blocker', unblock: '', linkOn: true }, { reason: 'Second blocker', unblock: '', linkOn: false }];
+            state.notes = [{ text: 'First note' }, { text: 'Second note' }];
+            renderTracker();
+            const checkRows = (selector, expected) => {
+                const rows = Array.from(document.querySelector(selector).rows);
+                assert(rows.map(row => row.classList.contains('item-start') ? 'start' : 'detail').join(',') === expected, 'item boundaries keep optional rows with their owner: ' + selector);
+                const starts = rows.filter(row => row.classList.contains('item-start'));
+                assert(getComputedStyle(starts[1].cells[0]).borderTopWidth === '1px' && getComputedStyle(starts[1].cells[0]).paddingTop === '16px', 'consecutive items have a thin divider and breathing room: ' + selector);
+                rows.filter(row => row.classList.contains('item-detail')).forEach(row => {
+                    assert(getComputedStyle(row.cells[0]).borderTopWidth === '0px', 'optional details have no inter-item gap');
+                });
+            };
+            checkRows('#days-container tbody', 'start,detail,detail,detail,start');
+            checkRows('#plans-tbody', 'start,detail,start');
+            checkRows('#blockers-tbody', 'start,detail,start');
+            checkRows('#notes-tbody', 'start,start');
+            state.tasks.Monday[0].linkOn = false;
+            state.tasks.Monday[0].reviewOn = false;
+            state.tasks.Monday[0].status = 'done';
+            state.tasks.Monday[1].linkOn = true;
+            state.tasks.Monday[1].reviewOn = true;
+            state.tasks.Monday[1].status = 'blocked';
+            renderTracker();
+            checkRows('#days-container tbody', 'start,start,detail,detail,detail');
+            const secondTaskRows = Array.from(document.querySelector('#days-container tbody').rows).slice(1);
+            assert(secondTaskRows.every(row => Array.from(row.querySelectorAll('[onchange]')).every(input => input.getAttribute('onchange').includes("'Monday',1,"))), 'second task and its detail fields retain their item-specific update targets');
+        } finally {
+            state = originalState;
+            renderTracker();
+        }
+    }
+
+    function testItemDefaults(assert) {
+        const savedState = state;
+        const savedDefaults = { ...itemDefaults };
+        const stored = Object.fromEntries(BACKUP_KEYS.map(key => [key, localStorage.getItem(key)]));
+        try {
+            localStorage.removeItem(ITEM_DEFAULTS_KEY);
+            itemDefaults = loadItemDefaults();
+            syncDefaultInputs();
+            assert(!itemDefaults.linkOn && !itemDefaults.reviewOn && ['cfg-default-link', 'cfg-default-review'].every(id => document.getElementById(id).getAttribute('aria-pressed') === 'false'), 'fresh configuration defaults both optional fields off');
+            [false, true].forEach(linkOn => [false, true].forEach(reviewOn => {
+                state = emptyWeek();
+                state.tasks.Monday[0] = { ...newTask(), title: 'Keep existing data', linkOn: !linkOn, reviewOn: !reviewOn, link: 'https://example.com/retained', reviewers: 'Retained reviewer' };
+                state.plans = [{ text: 'Keep plan', linkOn: !linkOn, link: 'https://example.com/plan' }];
+                state.blockers = [{ reason: 'Keep blocker', linkOn: !linkOn, link: 'https://example.com/blocker' }];
+                const existing = JSON.stringify(state);
+                const existingBuffer = localStorage.getItem(STATE_KEY);
+                const existingHistory = localStorage.getItem(HISTORY_KEY);
+                [['cfg-default-link', linkOn], ['cfg-default-review', reviewOn]].forEach(([id, enabled]) => {
+                    const button = document.getElementById(id);
+                    if (button.getAttribute('aria-pressed') !== String(enabled)) button.click();
+                    assert(button.querySelector('.config-toggle-state').textContent === (enabled ? 'On' : 'Off'), 'default button shows its current state');
+                    assert(getComputedStyle(button).backgroundColor === (enabled ? 'rgb(35, 134, 54)' : 'rgb(0, 0, 0)'), 'default button turns green when enabled and black when disabled');
+                    assert(document.getElementById(button.getAttribute('aria-describedby')).textContent.trim(), 'each default button has its own hint');
+                });
+                assert(JSON.stringify(state) === existing && localStorage.getItem(STATE_KEY) === existingBuffer && localStorage.getItem(HISTORY_KEY) === existingHistory, 'saving defaults leaves existing item data and weekly snapshots unchanged');
+                itemDefaults = loadItemDefaults();
+                syncDefaultInputs();
+                assert(itemDefaults.linkOn === linkOn && itemDefaults.reviewOn === reviewOn && document.getElementById('cfg-default-link').getAttribute('aria-pressed') === String(linkOn) && document.getElementById('cfg-default-review').getAttribute('aria-pressed') === String(reviewOn), 'independent defaults persist and reload into configuration');
+                const seeded = emptyWeek().tasks.Monday[0];
+                assert(seeded.linkOn === linkOn && seeded.reviewOn === reviewOn, 'new week seed follows both configured defaults');
+                addTask('Monday');
+                addPlanItem();
+                addBlockerItem();
+                const added = state.tasks.Monday[1];
+                assert(added.linkOn === linkOn && added.reviewOn === reviewOn, 'Add Task follows independent defaults');
+                assert(state.plans[1].linkOn === linkOn && state.blockers[1].linkOn === linkOn && !('reviewOn' in state.plans[1]) && !('reviewOn' in state.blockers[1]), 'new plans and blockers follow only the reference link default');
+                assert(JSON.stringify(state.tasks.Monday[0]) === JSON.stringify(JSON.parse(existing).tasks.Monday[0]), 'adding configured items preserves existing task toggles and text');
+            }));
+            const label = 'Week of 3 Aug - 7 Aug · 2099';
+            const history = loadHistory();
+            delete history[label];
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            loadWeekIntoState(label);
+            assert(state.tasks.Monday[0].linkOn && state.tasks.Monday[0].reviewOn, 'selecting an unsaved week seeds a task with configured defaults');
+            const legacy = { tasks: { Monday: [{ title: 'Legacy task' }, { linkOn: false, reviewOn: false }] }, plans: [{}], blockers: [{}] };
+            normalizeState(legacy);
+            assert(!legacy.tasks.Monday[0].linkOn && !legacy.tasks.Monday[0].reviewOn && !legacy.tasks.Monday[1].linkOn && !legacy.tasks.Monday[1].reviewOn && !legacy.plans[0].linkOn && !legacy.blockers[0].linkOn, 'loading old items never inherits enabled creation defaults');
+            const bundle = buildBackupBundle();
+            assert(bundle.data[ITEM_DEFAULTS_KEY].linkOn && bundle.data[ITEM_DEFAULTS_KEY].reviewOn, 'backup includes defaults as nested JSON');
+            updateItemDefault('linkOn', false);
+            updateItemDefault('reviewOn', false);
+            applyBackup(bundle);
+            itemDefaults = loadItemDefaults();
+            assert(itemDefaults.linkOn && itemDefaults.reviewOn, 'backup round trip restores both defaults');
+            [1, 2].forEach(version => {
+                const data = { tasks: { Monday: [{ title: 'Restored task', linkOn: false, reviewOn: true }] } };
+                applyBackup({ version, data: { [STATE_KEY]: version === 1 ? JSON.stringify(data) : data } });
+                itemDefaults = loadItemDefaults();
+                const restored = JSON.parse(localStorage.getItem(STATE_KEY)).tasks.Monday[0];
+                assert(!itemDefaults.linkOn && !itemDefaults.reviewOn && !restored.linkOn && restored.reviewOn, 'older backups without preferences reset defaults off while preserving item toggles');
+            });
+        } finally {
+            BACKUP_KEYS.forEach(key => { if (stored[key] === null) localStorage.removeItem(key); else localStorage.setItem(key, stored[key]); });
+            state = savedState;
+            itemDefaults = savedDefaults;
+            syncDefaultInputs();
+            renderTracker();
+        }
+    }
+
     // ponytail: minimal self-check. Open with ?selftest to run; asserts fail loud.
     function runSelfTest() {
         const assert = (c, m) => { if (!c) { document.documentElement.dataset.selftest = 'fail'; console.error('SELFTEST FAIL:', m); alert('SELFTEST FAIL: ' + m); throw new Error(m); } };
         assert(document.getElementById('days-container').children.length === TRACKER_PERIODS.length, 'tracker renders the expected number of period cards');
+        testItemSeparation(assert);
         assert(reportMeta('weekly', 'Week of 3 Aug - 7 Aug · 2026').title === (IS_WEEKLY_TRACKER ? 'Weekly Work Report' : 'Weekly Report'), 'weekly report title matches tracker mode');
         const settings = document.getElementById('user-settings');
-        assert(!settings.open, 'user configuration is collapsed by default');
+        assert(!settings.open, 'configuration is collapsed by default');
         assert(getComputedStyle(settings).position === 'fixed' && getComputedStyle(settings).right === '20px' && getComputedStyle(settings).bottom === '20px', 'settings stay in the bottom-right corner');
         assert(document.querySelector('.tracker-bar .week-stepper') && !settings.querySelector('#cfg-week'), 'week range is in the action bar, outside settings');
         settings.querySelector('summary').click();
         const configWidths = Array.from(settings.querySelectorAll('.form-group')).map(el => el.getBoundingClientRect().width);
-        assert(settings.open && configWidths.every(width => width > 0), 'settings gear reveals user configuration');
+        assert(settings.open && configWidths.every(width => width > 0), 'settings gear reveals configuration');
         assert(Math.max(...configWidths) - Math.min(...configWidths) < 2, 'configuration fields have consistent widths');
         document.getElementById('cfg-name').click();
         assert(settings.open, 'clicking inside settings keeps them open');
@@ -1289,15 +1451,18 @@
         // Weekday date tags roll over month boundaries.
         assert(dateTagFor('Week of 29 Jun - 3 Jul · 2026', 'Wednesday') === '1 Jul', 'dateTagFor rolls into next month');
         assert(backupFilename('Week of 21 Sep - 25 Sep · 2026') === 'weekly-work-tracker-backup-2026-09-21-to-2026-09-25.json', 'backup filename uses selected week range');
+        testItemDefaults(assert);
         const defaultWeek = emptyWeek();
-        assert(defaultWeek.tasks.Monday[0].linkOn === false, 'new week hides reference links by default');
+        assert(defaultWeek.tasks.Monday[0].linkOn === itemDefaults.linkOn && defaultWeek.tasks.Monday[0].reviewOn === itemDefaults.reviewOn, 'new week uses configured optional fields');
         const legacyState = { tasks: { Monday: [{ link: '' }, { linkOn: true }] }, plans: [{}, { linkOn: true }], blockers: [{}, { linkOn: true }] };
         normalizeState(legacyState);
         assert(!legacyState.tasks.Monday[0].linkOn && !legacyState.plans[0].linkOn && !legacyState.blockers[0].linkOn, 'legacy items without link preference default off');
         assert(legacyState.tasks.Monday[1].linkOn && legacyState.plans[1].linkOn && legacyState.blockers[1].linkOn, 'saved link preferences remain unchanged');
         const savedState = state;
         const savedBackup = buildBackupBundle();
+        const savedDefaults = { ...itemDefaults };
         try {
+            itemDefaults = { linkOn: false, reviewOn: false };
             state = emptyWeek();
             addTask('Monday');
             const taskCard = document.getElementById('days-container');
@@ -1323,6 +1488,7 @@
         } finally {
             state = savedState;
             applyBackup(savedBackup);
+            itemDefaults = savedDefaults;
             renderTracker();
         }
         // Backup round-trip: export current keys, wipe them, re-import, keys return.
